@@ -1,5 +1,5 @@
-import { Stack, router } from 'expo-router'; // Stack is used for options
-import React, { useState, useEffect } from 'react';
+import { Stack, router } from 'expo-router';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Text,
     View,
@@ -18,25 +18,23 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// Assuming your modal component is named AddRoutineActionForm.tsx
-// and located at '@/components/AddRoutineActionForm'
-// If it's AddRoutineActionModal.tsx, change the import accordingly.
-import AddRoutineActionModal, { RoutineActionData } from '@/components/AddRoutineActionForm';
+
+import { useAppTheme, type AppTheme } from '@/contexts/AppThemeProvider'; // Adjust path
+import type { RoutineActionData as ModalRoutineActionData } from '@/components/AddRoutineActionForm';
+import AddRoutineActionModal from '@/components/AddRoutineActionForm';
 
 const { width: screenWidth } = Dimensions.get('window');
 type SelectedTab = 'routine' | 'log';
 
-// Updated ActionItem type: removed initialDoneCount, doneCount is the source of truth
 type ActionItem = {
     id: string;
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
-    doneCount: number; // Current done count
-    iconColor: string;
-    backgroundColor: string;
+    doneCount: number;
+    iconColor: string; // Color for the icon itself, determined by modal selection
+    backgroundColor: string; // Background for the icon container, determined by modal selection
 };
 
-// Initial data now directly uses doneCount
 const initialActionsData: ActionItem[] = [
     { id: '1', icon: 'sunny-outline', title: 'Morning Routine', doneCount: 0, iconColor: '#FFA500', backgroundColor: '#FFF3E0' },
     { id: '2', icon: 'restaurant-outline', title: 'Lunch Break', doneCount: 0, iconColor: '#4CAF50', backgroundColor: '#E8F5E9' },
@@ -52,30 +50,31 @@ const springConfig = {
     mass: 1,
 };
 
-// ActionCard now uses action.doneCount directly for its initial state.
-// If doneCount needs to be updated in the parent (currentActionsData),
-// you'd pass an onUpdateCount function from ActionsScreen to ActionCard.
-// For now, ActionCard manages its own displayed doneCount based on the initial prop.
 const ActionCard = ({ action }: { action: ActionItem }) => {
-    const [doneCount, setDoneCount] = useState(action.doneCount); // Use action.doneCount
+    const theme = useAppTheme();
+    const [doneCount, setDoneCount] = useState(action.doneCount);
+    const cardStyles = useMemo(() => getActionCardStyles(theme), [theme]);
+
     const handleIncrement = () => setDoneCount(prev => prev + 1);
     const handleDecrement = () => setDoneCount(prev => (prev > 0 ? prev - 1 : 0));
 
     return (
-        <View style={styles.routineCard}>
-            <View style={[styles.iconContainer, { backgroundColor: action.backgroundColor }]}>
+        <View style={cardStyles.routineCard}>
+            <View style={[cardStyles.iconContainer, { backgroundColor: action.backgroundColor }]}>
                 <Ionicons name={action.icon} size={24} color={action.iconColor} />
             </View>
-            <View style={styles.textContainer}>
-                <Text style={styles.routineTitle}>{action.title}</Text>
-                <Text style={styles.routineTime}>Done: {doneCount}</Text>
+            <View style={cardStyles.textContainer}>
+                <Text style={cardStyles.routineTitle}>{action.title}</Text>
+                <Text style={cardStyles.routineTime}>Done: {doneCount}</Text>
             </View>
-            <View style={styles.counterContainer}>
-                <TouchableOpacity style={styles.counterButton} onPress={handleDecrement}>
-                    <Ionicons name="remove-circle-outline" size={28} color="gray" />
+            <View style={cardStyles.counterContainer}>
+                <TouchableOpacity style={cardStyles.counterButton} onPress={handleDecrement}>
+                    {/* Use theme color for icon */}
+                    <Ionicons name="remove-circle-outline" size={28} color={theme.onSurfaceVariant} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.counterButton} onPress={handleIncrement}>
-                    <Ionicons name="add-circle-outline" size={28} color="#007AFF" />
+                <TouchableOpacity style={cardStyles.counterButton} onPress={handleIncrement}>
+                    {/* Use theme color for icon */}
+                    <Ionicons name="add-circle-outline" size={28} color={theme.primary} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -83,7 +82,10 @@ const ActionCard = ({ action }: { action: ActionItem }) => {
 };
 
 const CustomHeader = ({ onSelectTab, selectedTab }: { onSelectTab: (tab: SelectedTab) => void; selectedTab: SelectedTab }) => {
+    const theme = useAppTheme();
     const insets = useSafeAreaInsets();
+    const headerStyles = useMemo(() => getCustomHeaderStyles(theme), [theme]);
+
     const underlineLeft = useSharedValue(selectedTab === 'routine' ? 0 : 50);
 
     useEffect(() => {
@@ -101,38 +103,40 @@ const CustomHeader = ({ onSelectTab, selectedTab }: { onSelectTab: (tab: Selecte
     };
 
     return (
-        <View style={[styles.customHeaderRoot, { paddingTop: insets.top }]}>
-            <View style={styles.topAppBar}>
-                <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-                    <Ionicons name="chevron-back" size={28} color="black" />
+        <View style={[headerStyles.customHeaderRoot, { paddingTop: insets.top }]}>
+            <View style={headerStyles.topAppBar}>
+                <TouchableOpacity style={headerStyles.backButton} onPress={handleBackPress}>
+                    {/* Use theme color for icon */}
+                    <Ionicons name="chevron-back" size={28} color={theme.onSurface} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Task Actions</Text>
-                <View style={styles.headerRightPlaceholder} />
+                <Text style={headerStyles.headerTitle}>Task Actions</Text>
+                <View style={headerStyles.headerRightPlaceholder} />
             </View>
-            <View style={styles.categoryTabsBar}>
-                <TouchableOpacity style={styles.actionButton} onPress={() => onSelectTab('routine')}>
-                    <Text style={[styles.actionButtonText, selectedTab === 'routine' && styles.actionButtonTextSelected]}>
+            <View style={headerStyles.categoryTabsBar}>
+                <TouchableOpacity style={headerStyles.actionButton} onPress={() => onSelectTab('routine')}>
+                    <Text style={[headerStyles.actionButtonText, selectedTab === 'routine' && headerStyles.actionButtonTextSelected]}>
                         Routine Actions
                     </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton} onPress={() => onSelectTab('log')}>
-                    <Text style={[styles.actionButtonText, selectedTab === 'log' && styles.actionButtonTextSelected]}>
+                <TouchableOpacity style={headerStyles.actionButton} onPress={() => onSelectTab('log')}>
+                    <Text style={[headerStyles.actionButtonText, selectedTab === 'log' && headerStyles.actionButtonTextSelected]}>
                         Log Specific Action
                     </Text>
                 </TouchableOpacity>
-                <Animated.View style={[styles.underline, { width: '50%' }, animatedUnderlineStyle]} />
+                <Animated.View style={[headerStyles.underline, { width: '50%' }, animatedUnderlineStyle]} />
             </View>
         </View>
     );
 };
 
 export default function ActionsScreen() {
+    const theme = useAppTheme();
+    const screenStyles = useMemo(() => getScreenStyles(theme), [theme]);
+
     const [selectedTab, setSelectedTab] = useState<SelectedTab>('routine');
     const tabPosition = useSharedValue(selectedTab === 'routine' ? 0 : 1);
 
-    // State for modal visibility
     const [isAddRoutineModalVisible, setIsAddRoutineModalVisible] = useState(false);
-    // State for the list of routine actions
     const [currentActionsData, setCurrentActionsData] = useState<ActionItem[]>(initialActionsData);
 
     useEffect(() => {
@@ -149,43 +153,37 @@ export default function ActionsScreen() {
         return { transform: [{ translateX }] };
     });
 
-    // Helper function to generate a lighter background (example)
     const lightenColor = (hex: string, percent: number): string => {
         hex = hex.replace(/^\s*#|\s*$/g, '');
-        if (hex.length === 3) {
-            hex = hex.replace(/(.)/g, '$1$1');
-        }
+        if (hex.length === 3) { hex = hex.replace(/(.)/g, '$1$1'); }
         let r = parseInt(hex.substring(0, 2), 16),
             g = parseInt(hex.substring(2, 4), 16),
             b = parseInt(hex.substring(4, 6), 16);
-
         r = Math.min(255, Math.floor(r + (255 - r) * percent));
         g = Math.min(255, Math.floor(g + (255 - g) * percent));
         b = Math.min(255, Math.floor(b + (255 - b) * percent));
-
-        const rr = r.toString(16).padStart(2, '0');
-        const gg = g.toString(16).padStart(2, '0');
-        const bb = b.toString(16).padStart(2, '0');
-        return `#${rr}${gg}${bb}`;
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     };
 
-    const handleSaveRoutineAction = (data: RoutineActionData) => {
-        console.log('New Routine Action to save:', data);
+    const handleSaveRoutineAction = (data: ModalRoutineActionData) => {
         const newAction: ActionItem = {
-            id: String(Date.now()), // Simple ID generation for example
+            id: String(Date.now()),
             title: data.title,
             icon: data.icon,
             iconColor: data.color,
-            backgroundColor: lightenColor(data.color, 0.85), // Derive a lighter background
-            doneCount: 0, // New actions start with 0 doneCount
+            backgroundColor: lightenColor(data.color, 0.85),
+            doneCount: 0,
         };
-        setCurrentActionsData(prevActions => [newAction, ...prevActions]); // Add to top of the list
-        setIsAddRoutineModalVisible(false); // Close modal
-        // Later, you'll call your Zustand store action here to persist this
+        setCurrentActionsData(prevActions => [newAction, ...prevActions]);
+        setIsAddRoutineModalVisible(false);
+    };
+
+    const handleCloseModal = () => {
+        setIsAddRoutineModalVisible(false);
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={screenStyles.safeArea}>
             <Stack.Screen
                 options={{
                     headerShown: true,
@@ -197,100 +195,52 @@ export default function ActionsScreen() {
                     ),
                 }}
             />
-            <View style={styles.contentContainer}>
-                <Animated.View style={[styles.pageContainer, routineAnimatedStyle]}>
-                    <View style={styles.routineSection}>
+            <View style={screenStyles.contentContainer}>
+                <Animated.View style={[screenStyles.pageContainer, routineAnimatedStyle]}>
+                    <View style={screenStyles.routineSection}>
                         <FlatList
-                            data={currentActionsData} // Use the state variable for dynamic data
+                            data={currentActionsData}
                             renderItem={({ item }) => <ActionCard action={item} />}
                             keyExtractor={(item) => item.id}
-                            style={styles.listStyle}
-                            contentContainerStyle={styles.listContentStyle}
-                            ListFooterComponent={<View style={{ height: 110 }} />} // Increased footer for button spacing
+                            style={screenStyles.listStyle}
+                            contentContainerStyle={screenStyles.listContentStyle}
+                            ListFooterComponent={<View style={{ height: 110 }} />}
                         />
                         <TouchableOpacity
-                            style={styles.addButton}
-                            onPress={() => setIsAddRoutineModalVisible(true)} // Open the modal
+                            style={screenStyles.addButton}
+                            onPress={() => setIsAddRoutineModalVisible(true)}
                         >
-                            <Ionicons name="add" size={24} color="white" />
-                            <Text style={styles.addButtonText}>Add Routine Action</Text>
+                            {/* Use theme color for icon */}
+                            <Ionicons name="add" size={24} color={theme.onPrimaryContainer} />
+                            <Text style={screenStyles.addButtonText}>Add Routine Action</Text>
                         </TouchableOpacity>
                     </View>
                 </Animated.View>
-                <Animated.View style={[styles.pageContainer, logAnimatedStyle]}>
-                    <View style={styles.logSection}>
-                        <Text style={styles.contentText}>Log Specific Action content here.</Text>
+                <Animated.View style={[screenStyles.pageContainer, logAnimatedStyle]}>
+                    <View style={screenStyles.logSection}>
+                        <Text style={screenStyles.contentText}>Log Specific Action content here.</Text>
                     </View>
                 </Animated.View>
             </View>
 
-            {/* Render the Modal Component */}
             <AddRoutineActionModal
                 visible={isAddRoutineModalVisible}
-                onClose={() => setIsAddRoutineModalVisible(false)}
+                onClose={handleCloseModal}
                 onSave={handleSaveRoutineAction}
             />
         </SafeAreaView>
     );
 }
 
-const styles = StyleSheet.create({
+// Moved StyleSheet creation into functions that accept theme
+const getScreenStyles = (theme: AppTheme) => StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: 'white',
-    },
-    customHeaderRoot: {
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.1)',
-    },
-    topAppBar: {
-        height: 56,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 8,
-    },
-    backButton: {
-        padding: 8,
-    },
-    headerTitle: {
-        color: 'black',
-        fontSize: 18,
-        fontWeight: '600',
-    },
-    headerRightPlaceholder: {
-        width: 28 + 16,
-    },
-    categoryTabsBar: {
-        flexDirection: 'row',
-        width: '100%',
-        position: 'relative',
-        backgroundColor: 'white',
-    },
-    actionButton: {
-        flex: 1,
-        paddingVertical: 15,
-        alignItems: 'center',
-    },
-    actionButtonText: {
-        color: 'gray',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    actionButtonTextSelected: {
-        color: '#007AFF',
-    },
-    underline: {
-        height: 3,
-        backgroundColor: '#007AFF',
-        position: 'absolute',
-        bottom: 0,
-        borderRadius: 2,
+        backgroundColor: theme.background, // MD3: Main background for the screen
     },
     contentContainer: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface, // MD3: Base surface for content areas
         overflow: 'hidden',
     },
     pageContainer: {
@@ -303,18 +253,18 @@ const styles = StyleSheet.create({
     },
     routineSection: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface, // Matches content container or could be different
     },
     logSection: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: theme.surfaceContainerLow, // A slightly different surface
     },
     contentText: {
         fontSize: 18,
-        color: 'gray',
+        color: theme.onSurfaceVariant,
         textAlign: 'center',
     },
     listStyle: {
@@ -324,74 +274,116 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 20,
     },
-    routineCard: {
-        backgroundColor: 'white',
-        borderRadius: 15,
-        padding: 15,
+    addButton: {
+        position: 'absolute',
+        bottom: Platform.OS === 'android' ? 20 : 0,
+        left: 20,
+        right: 20,
+        backgroundColor: theme.primaryContainer, // MD3: Button background
+        borderRadius: 28, // MD3 Extended FAB often has larger radius
+        paddingVertical: 16, // Adjusted padding for FAB feel
         flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 15,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.18,
-        shadowRadius: 1.00,
-        elevation: 1,
-    },
-    iconContainer: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 15,
+        zIndex: 10,
+        elevation: 3, // MD3 elevation
+    },
+    addButtonText: {
+        color: theme.onPrimaryContainer, // MD3: Text on button
+        fontSize: 16,
+        fontWeight: '600', // Medium weight
+        marginLeft: 8,
+    },
+});
+
+const getCustomHeaderStyles = (theme: AppTheme) => StyleSheet.create({
+    customHeaderRoot: {
+        backgroundColor: theme.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.outlineVariant, // Subtle border
+    },
+    topAppBar: {
+        height: 56,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 8, // Adjusted for icon touch areas
+    },
+    backButton: {
+        padding: 12, // Slightly larger touch area
+    },
+    headerTitle: {
+        color: theme.onSurface, // Text on header surface
+        fontSize: 20, // MD3 Title Large or Medium
+        fontWeight: '600',
+    },
+    headerRightPlaceholder: {
+        width: 28 + 24,
+    },
+    categoryTabsBar: {
+        flexDirection: 'row',
+        width: '100%',
+        position: 'relative',
+        backgroundColor: theme.surface, // Tabs background
+    },
+    actionButton: {
+        flex: 1,
+        paddingVertical: 15,
+        alignItems: 'center',
+    },
+    actionButtonText: {
+        color: theme.onSurfaceVariant, // Inactive tab text
+        fontSize: 14, // MD3 Label Large
+        fontWeight: '600',
+    },
+    actionButtonTextSelected: {
+        color: theme.primary, // Active tab text
+    },
+    underline: {
+        height: 3,
+        backgroundColor: theme.primary, // Active tab indicator
+        position: 'absolute',
+        bottom: 0,
+        borderRadius: 1.5, // Rounded indicator
+    },
+});
+
+const getActionCardStyles = (theme: AppTheme) => StyleSheet.create({
+    routineCard: {
+        backgroundColor: theme.surfaceContainer, // Use a standard container color
+        borderRadius: 12, // MD3 card radius
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
     },
     textContainer: {
         flex: 1,
         justifyContent: 'center',
     },
     routineTitle: {
-        fontSize: 16,
+        fontSize: 16, // MD3 Title Medium / Body Large
         fontWeight: '600',
-        color: '#333',
+        color: theme.onSurface,
     },
     routineTime: {
-        fontSize: 14,
-        color: 'gray',
+        fontSize: 14, // MD3 Body Medium
+        color: theme.onSurfaceVariant, // Less emphasized text
         marginTop: 4,
-        fontWeight: '500',
     },
     counterContainer: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     counterButton: {
-        paddingHorizontal: 5,
-        paddingVertical: 5,
-    },
-    addButton: {
-        position: 'absolute',
-        bottom: Platform.OS === 'android' ? 20 : 0,
-        left: 20,
-        right: 20,
-        backgroundColor: '#007AFF',
-        borderRadius: 25,
-        paddingVertical: 15,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 10,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    addButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginLeft: 8,
+        padding: 8, // Make touch target larger
     },
 });
