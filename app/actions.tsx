@@ -1,7 +1,15 @@
-// app/(tabs)/tasks.tsx
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router'; // Stack is used for options
 import React, { useState, useEffect } from 'react';
-import { Text, View, StyleSheet, TouchableOpacity, Platform, StatusBar, FlatList, Dimensions } from 'react-native';
+import {
+    Text,
+    View,
+    StyleSheet,
+    TouchableOpacity,
+    FlatList,
+    Dimensions,
+    SafeAreaView,
+    Platform,
+} from 'react-native';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -9,35 +17,47 @@ import Animated, {
     interpolate,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// Assuming your modal component is named AddRoutineActionForm.tsx
+// and located at '@/components/AddRoutineActionForm'
+// If it's AddRoutineActionModal.tsx, change the import accordingly.
+import AddRoutineActionModal, { RoutineActionData } from '@/components/AddRoutineActionForm';
 
 const { width: screenWidth } = Dimensions.get('window');
 type SelectedTab = 'routine' | 'log';
-type Action = {
+
+// Updated ActionItem type: removed initialDoneCount, doneCount is the source of truth
+type ActionItem = {
     id: string;
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
-    initialDoneCount: number;
+    doneCount: number; // Current done count
     iconColor: string;
     backgroundColor: string;
 };
-const actionsData: Action[] = [
-    { id: '1', icon: 'sunny-outline', title: 'Morning Routine', initialDoneCount: 0, iconColor: '#FFA500', backgroundColor: '#FFF3E0' },
-    { id: '2', icon: 'restaurant-outline', title: 'Lunch Break', initialDoneCount: 0, iconColor: '#4CAF50', backgroundColor: '#E8F5E9' },
-    { id: '3', icon: 'moon-outline', title: 'Evening Routine', initialDoneCount: 0, iconColor: '#673AB7', backgroundColor: '#EDE7F6' },
-    { id: '4', icon: 'walk-outline', title: 'Afternoon Walk', initialDoneCount: 0, iconColor: '#03A9F4', backgroundColor: '#E1F5FE' },
-    { id: '5', icon: 'book-outline', title: 'Reading Time', initialDoneCount: 0, iconColor: '#795548', backgroundColor: '#EFEBE9' },
-    { id: '6', icon: 'fitness-outline', title: 'Workout', initialDoneCount: 0, iconColor: '#F44336', backgroundColor: '#FFEBEE' },
+
+// Initial data now directly uses doneCount
+const initialActionsData: ActionItem[] = [
+    { id: '1', icon: 'sunny-outline', title: 'Morning Routine', doneCount: 0, iconColor: '#FFA500', backgroundColor: '#FFF3E0' },
+    { id: '2', icon: 'restaurant-outline', title: 'Lunch Break', doneCount: 0, iconColor: '#4CAF50', backgroundColor: '#E8F5E9' },
+    { id: '3', icon: 'moon-outline', title: 'Evening Routine', doneCount: 0, iconColor: '#673AB7', backgroundColor: '#EDE7F6' },
+    { id: '4', icon: 'walk-outline', title: 'Afternoon Walk', doneCount: 0, iconColor: '#03A9F4', backgroundColor: '#E1F5FE' },
+    { id: '5', icon: 'book-outline', title: 'Reading Time', doneCount: 0, iconColor: '#795548', backgroundColor: '#EFEBE9' },
+    { id: '6', icon: 'fitness-outline', title: 'Workout', doneCount: 0, iconColor: '#F44336', backgroundColor: '#FFEBEE' },
 ];
 
-// 스프링 설정 (힘 빼기)
 const springConfig = {
-    damping: 18, // 출렁임 줄이기 (값을 높임)
-    stiffness: 200, // 부드럽게 움직이도록 (값을 낮춤)
-    mass: 1, // 기본값 유지 (필요시 조정)
+    damping: 18,
+    stiffness: 200,
+    mass: 1,
 };
 
-const ActionCard = ({ action }: { action: Action }) => {
-    const [doneCount, setDoneCount] = useState(action.initialDoneCount);
+// ActionCard now uses action.doneCount directly for its initial state.
+// If doneCount needs to be updated in the parent (currentActionsData),
+// you'd pass an onUpdateCount function from ActionsScreen to ActionCard.
+// For now, ActionCard manages its own displayed doneCount based on the initial prop.
+const ActionCard = ({ action }: { action: ActionItem }) => {
+    const [doneCount, setDoneCount] = useState(action.doneCount); // Use action.doneCount
     const handleIncrement = () => setDoneCount(prev => prev + 1);
     const handleDecrement = () => setDoneCount(prev => (prev > 0 ? prev - 1 : 0));
 
@@ -63,26 +83,33 @@ const ActionCard = ({ action }: { action: Action }) => {
 };
 
 const CustomHeader = ({ onSelectTab, selectedTab }: { onSelectTab: (tab: SelectedTab) => void; selectedTab: SelectedTab }) => {
+    const insets = useSafeAreaInsets();
     const underlineLeft = useSharedValue(selectedTab === 'routine' ? 0 : 50);
 
     useEffect(() => {
-        // ▼▼▼ 여기에 springConfig 적용 ▼▼▼
         underlineLeft.value = withSpring(selectedTab === 'routine' ? 0 : 50, springConfig);
-    }, [selectedTab]);
+    }, [selectedTab, underlineLeft]);
 
-    const animatedUnderlineStyle = useAnimatedStyle(() => {
-        return {
-            left: `${underlineLeft.value}%`,
-        };
-    });
+    const animatedUnderlineStyle = useAnimatedStyle(() => ({
+        left: `${underlineLeft.value}%`,
+    }));
+
+    const handleBackPress = () => {
+        if (router.canGoBack()) {
+            router.back();
+        }
+    };
 
     return (
-        <View style={styles.headerContainer}>
-            <TouchableOpacity style={styles.backButton}>
-                <Ionicons name="chevron-back" size={24} color="black" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Task Details</Text>
-            <View style={styles.actionButtonsContainer}>
+        <View style={[styles.customHeaderRoot, { paddingTop: insets.top }]}>
+            <View style={styles.topAppBar}>
+                <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+                    <Ionicons name="chevron-back" size={28} color="black" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Task Actions</Text>
+                <View style={styles.headerRightPlaceholder} />
+            </View>
+            <View style={styles.categoryTabsBar}>
                 <TouchableOpacity style={styles.actionButton} onPress={() => onSelectTab('routine')}>
                     <Text style={[styles.actionButtonText, selectedTab === 'routine' && styles.actionButtonTextSelected]}>
                         Routine Actions
@@ -99,35 +126,66 @@ const CustomHeader = ({ onSelectTab, selectedTab }: { onSelectTab: (tab: Selecte
     );
 };
 
-export default function TasksScreen() {
+export default function ActionsScreen() {
     const [selectedTab, setSelectedTab] = useState<SelectedTab>('routine');
     const tabPosition = useSharedValue(selectedTab === 'routine' ? 0 : 1);
 
+    // State for modal visibility
+    const [isAddRoutineModalVisible, setIsAddRoutineModalVisible] = useState(false);
+    // State for the list of routine actions
+    const [currentActionsData, setCurrentActionsData] = useState<ActionItem[]>(initialActionsData);
+
     useEffect(() => {
-        // ▼▼▼ 여기에 springConfig 적용 ▼▼▼
         tabPosition.value = withSpring(selectedTab === 'routine' ? 0 : 1, springConfig);
-    }, [selectedTab]);
+    }, [selectedTab, tabPosition]);
 
     const routineAnimatedStyle = useAnimatedStyle(() => {
-        const translateX = interpolate(
-            tabPosition.value,
-            [0, 1],
-            [0, -screenWidth]
-        );
+        const translateX = interpolate(tabPosition.value, [0, 1], [0, -screenWidth]);
         return { transform: [{ translateX }] };
     });
 
     const logAnimatedStyle = useAnimatedStyle(() => {
-        const translateX = interpolate(
-            tabPosition.value,
-            [0, 1],
-            [screenWidth, 0]
-        );
+        const translateX = interpolate(tabPosition.value, [0, 1], [screenWidth, 0]);
         return { transform: [{ translateX }] };
     });
 
+    // Helper function to generate a lighter background (example)
+    const lightenColor = (hex: string, percent: number): string => {
+        hex = hex.replace(/^\s*#|\s*$/g, '');
+        if (hex.length === 3) {
+            hex = hex.replace(/(.)/g, '$1$1');
+        }
+        let r = parseInt(hex.substring(0, 2), 16),
+            g = parseInt(hex.substring(2, 4), 16),
+            b = parseInt(hex.substring(4, 6), 16);
+
+        r = Math.min(255, Math.floor(r + (255 - r) * percent));
+        g = Math.min(255, Math.floor(g + (255 - g) * percent));
+        b = Math.min(255, Math.floor(b + (255 - b) * percent));
+
+        const rr = r.toString(16).padStart(2, '0');
+        const gg = g.toString(16).padStart(2, '0');
+        const bb = b.toString(16).padStart(2, '0');
+        return `#${rr}${gg}${bb}`;
+    };
+
+    const handleSaveRoutineAction = (data: RoutineActionData) => {
+        console.log('New Routine Action to save:', data);
+        const newAction: ActionItem = {
+            id: String(Date.now()), // Simple ID generation for example
+            title: data.title,
+            icon: data.icon,
+            iconColor: data.color,
+            backgroundColor: lightenColor(data.color, 0.85), // Derive a lighter background
+            doneCount: 0, // New actions start with 0 doneCount
+        };
+        setCurrentActionsData(prevActions => [newAction, ...prevActions]); // Add to top of the list
+        setIsAddRoutineModalVisible(false); // Close modal
+        // Later, you'll call your Zustand store action here to persist this
+    };
+
     return (
-        <>
+        <SafeAreaView style={styles.safeArea}>
             <Stack.Screen
                 options={{
                     headerShown: true,
@@ -143,14 +201,17 @@ export default function TasksScreen() {
                 <Animated.View style={[styles.pageContainer, routineAnimatedStyle]}>
                     <View style={styles.routineSection}>
                         <FlatList
-                            data={actionsData}
+                            data={currentActionsData} // Use the state variable for dynamic data
                             renderItem={({ item }) => <ActionCard action={item} />}
                             keyExtractor={(item) => item.id}
                             style={styles.listStyle}
                             contentContainerStyle={styles.listContentStyle}
-                            ListFooterComponent={<View style={{ height: 90 }} />}
+                            ListFooterComponent={<View style={{ height: 110 }} />} // Increased footer for button spacing
                         />
-                        <TouchableOpacity style={styles.addButton}>
+                        <TouchableOpacity
+                            style={styles.addButton}
+                            onPress={() => setIsAddRoutineModalVisible(true)} // Open the modal
+                        >
                             <Ionicons name="add" size={24} color="white" />
                             <Text style={styles.addButtonText}>Add Routine Action</Text>
                         </TouchableOpacity>
@@ -158,37 +219,50 @@ export default function TasksScreen() {
                 </Animated.View>
                 <Animated.View style={[styles.pageContainer, logAnimatedStyle]}>
                     <View style={styles.logSection}>
-                        <Text style={styles.contentText}>Log Specific Action 내용이 여기에 표시됩니다.</Text>
+                        <Text style={styles.contentText}>Log Specific Action content here.</Text>
                     </View>
                 </Animated.View>
             </View>
-        </>
+
+            {/* Render the Modal Component */}
+            <AddRoutineActionModal
+                visible={isAddRoutineModalVisible}
+                onClose={() => setIsAddRoutineModalVisible(false)}
+                onSave={handleSaveRoutineAction}
+            />
+        </SafeAreaView>
     );
 }
 
-// 스타일 시트 (이전과 동일)
 const styles = StyleSheet.create({
-    headerContainer: {
+    safeArea: {
+        flex: 1,
         backgroundColor: 'white',
-        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 20) : 50,
-        paddingBottom: 0,
+    },
+    customHeaderRoot: {
+        backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(0,0,0,0.1)',
     },
+    topAppBar: {
+        height: 56,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 8,
+    },
     backButton: {
-        position: 'absolute',
-        left: 15,
-        top: Platform.OS === 'android' ? (StatusBar.currentHeight || 20) + 5 : 55,
-        zIndex: 1,
+        padding: 8,
     },
     headerTitle: {
         color: 'black',
-        fontSize: 20,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 15,
+        fontSize: 18,
+        fontWeight: '600',
     },
-    actionButtonsContainer: {
+    headerRightPlaceholder: {
+        width: 28 + 16,
+    },
+    categoryTabsBar: {
         flexDirection: 'row',
         width: '100%',
         position: 'relative',
@@ -259,6 +333,11 @@ const styles = StyleSheet.create({
         marginBottom: 15,
         borderWidth: 1,
         borderColor: '#E0E0E0',
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.18,
+        shadowRadius: 1.00,
+        elevation: 1,
     },
     iconContainer: {
         width: 50,
@@ -289,10 +368,11 @@ const styles = StyleSheet.create({
     },
     counterButton: {
         paddingHorizontal: 5,
+        paddingVertical: 5,
     },
     addButton: {
         position: 'absolute',
-        bottom: Platform.OS === 'ios' ? 30 : 20,
+        bottom: Platform.OS === 'android' ? 20 : 0,
         left: 20,
         right: 20,
         backgroundColor: '#007AFF',
@@ -303,7 +383,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         zIndex: 10,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2, },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         elevation: 5,
