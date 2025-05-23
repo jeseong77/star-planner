@@ -50,7 +50,7 @@ export default function TabLayout() {
         options={{
           title: "Result",
           tabBarIcon: ({ color }) => (
-            <AntDesign name="profile" size={24} color="black" />
+            <AntDesign name="profile" size={24} color={color} />
           ),
         }}
       />
