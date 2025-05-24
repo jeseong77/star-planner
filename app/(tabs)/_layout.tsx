@@ -34,6 +34,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
           ),
+          animation: 'none'
         }}
       />
       <Tabs.Screen
@@ -43,6 +44,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="paperplane.fill" color={color} />
           ),
+          animation: 'none'
         }}
       />
       <Tabs.Screen
@@ -52,6 +54,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <AntDesign name="profile" size={24} color={color} />
           ),
+          animation: 'none'
         }}
       />
     </Tabs>

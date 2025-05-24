@@ -69,11 +69,9 @@ const ActionCard = ({ action }: { action: ActionItem }) => {
             </View>
             <View style={cardStyles.counterContainer}>
                 <TouchableOpacity style={cardStyles.counterButton} onPress={handleDecrement}>
-                    {/* Use theme color for icon */}
                     <Ionicons name="remove-circle-outline" size={28} color={theme.onSurfaceVariant} />
                 </TouchableOpacity>
                 <TouchableOpacity style={cardStyles.counterButton} onPress={handleIncrement}>
-                    {/* Use theme color for icon */}
                     <Ionicons name="add-circle-outline" size={28} color={theme.primary} />
                 </TouchableOpacity>
             </View>
