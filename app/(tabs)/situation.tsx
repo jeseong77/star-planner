@@ -93,8 +93,7 @@ const ProblemItem = ({ problem, tasks, isExpanded, onToggleExpand }: {
 
 export default function SituationScreen() {
   const theme = useAppTheme();
-  const insets = useSafeAreaInsets(); // Get all insets
-  // Pass only the bottom inset to the style generating function, or the whole insets object
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => getScreenStyles(theme, insets.bottom), [theme, insets.bottom]);
 
   const [description, setDescription] = useState(MOCK_SITUATION_DESCRIPTION);
@@ -138,7 +137,6 @@ export default function SituationScreen() {
   };
 
   return (
-    // Changed SafeAreaView to View for the main screen container
     <View style={styles.screenContainer}>
       <Stack.Screen
         options={{
@@ -156,7 +154,7 @@ export default function SituationScreen() {
       />
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollViewContent} // Apply bottom padding here
+        contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Description Section */}
@@ -206,11 +204,6 @@ export default function SituationScreen() {
               <Text style={styles.addProblemButtonText}>Add Problem</Text>
             </TouchableOpacity>
           </View>
-          {/* Using View to render problem items as FlatList inside ScrollView can cause performance issues
-              and virtualization loss. For a small number of problems, mapping is okay.
-              If problems list can be very long, consider a different structure or use SectionList.
-              For this example, assuming problemsData isn't excessively long.
-          */}
           {problemsData.map(problem => {
             const relevantTasks = tasksData.filter(task => task.problemId === problem.id);
             return (
@@ -229,18 +222,16 @@ export default function SituationScreen() {
   );
 }
 
-// --- Styles ---
 const getScreenStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({ // Accept bottomInset
-  screenContainer: { // Renamed from safeArea
+  screenContainer: {
     flex: 1,
     backgroundColor: theme.background,
-    // The Stack navigator's header will handle the top safe area.
   },
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
-    paddingBottom: bottomInset + 16, // Add bottom inset plus some extra padding
+    paddingBottom: 16,
   },
   sectionContainer: {
     paddingHorizontal: 20,
@@ -256,7 +247,7 @@ const getScreenStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.cre
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 20, // Adjusted from 22 for section titles
+    fontSize: 20,
     fontWeight: '600',
     color: theme.onSurface,
   },
@@ -337,12 +328,10 @@ const getScreenStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.cre
 
 const getProblemItemStyles = (theme: AppTheme) => StyleSheet.create({
   problemCard: {
-    backgroundColor: theme.surfaceContainerHigh, // Slightly more elevated than section background
+    backgroundColor: theme.surfaceContainerHigh,
     borderRadius: 12,
     marginBottom: 12,
     padding: 16,
-    // borderWidth: 1, // Using surface color difference for elevation mainly
-    // borderColor: theme.outlineVariant,
   },
   problemHeader: {
     flexDirection: 'row',
@@ -369,7 +358,7 @@ const getProblemItemStyles = (theme: AppTheme) => StyleSheet.create({
   tasksListContainer: {
     marginTop: 12,
     paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth, // Use hairlineWidth for subtle separators
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.outlineVariant,
   },
 });
