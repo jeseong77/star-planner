@@ -1,27 +1,31 @@
+// app/actions.tsx (or your path)
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, router } from 'expo-router';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    Text,
-    View,
-    StyleSheet,
-    TouchableOpacity,
-    FlatList,
     Dimensions,
-    SafeAreaView,
+    FlatList, // Import Pressable for overlay
+    KeyboardAvoidingView,
     Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    withSpring,
+    FadeIn,
     interpolate,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useAppTheme, type AppTheme } from '@/contexts/AppThemeProvider'; // Adjust path
-import type { RoutineActionData as ModalRoutineActionData } from '@/components/AddRoutineActionForm';
-import AddRoutineActionModal from '@/components/AddRoutineActionForm';
+import { useAppTheme, type AppTheme } from '@/contexts/AppThemeProvider';
+// Ensure the import name matches the exported component name
+import AddRoutineActionView, { RoutineActionData as ModalRoutineActionData } from '@/components/AddRoutineActionForm';
+
 
 const { width: screenWidth } = Dimensions.get('window');
 type SelectedTab = 'routine' | 'log';
@@ -31,8 +35,8 @@ type ActionItem = {
     icon: keyof typeof Ionicons.glyphMap;
     title: string;
     doneCount: number;
-    iconColor: string; // Color for the icon itself, determined by modal selection
-    backgroundColor: string; // Background for the icon container, determined by modal selection
+    iconColor: string;
+    backgroundColor: string;
 };
 
 const initialActionsData: ActionItem[] = [
@@ -83,28 +87,19 @@ const CustomHeader = ({ onSelectTab, selectedTab }: { onSelectTab: (tab: Selecte
     const theme = useAppTheme();
     const insets = useSafeAreaInsets();
     const headerStyles = useMemo(() => getCustomHeaderStyles(theme), [theme]);
-
     const underlineLeft = useSharedValue(selectedTab === 'routine' ? 0 : 50);
 
     useEffect(() => {
         underlineLeft.value = withSpring(selectedTab === 'routine' ? 0 : 50, springConfig);
     }, [selectedTab, underlineLeft]);
 
-    const animatedUnderlineStyle = useAnimatedStyle(() => ({
-        left: `${underlineLeft.value}%`,
-    }));
-
-    const handleBackPress = () => {
-        if (router.canGoBack()) {
-            router.back();
-        }
-    };
+    const animatedUnderlineStyle = useAnimatedStyle(() => ({ left: `${underlineLeft.value}%` }));
+    const handleBackPress = () => { if (router.canGoBack()) router.back(); };
 
     return (
         <View style={[headerStyles.customHeaderRoot, { paddingTop: insets.top }]}>
             <View style={headerStyles.topAppBar}>
                 <TouchableOpacity style={headerStyles.backButton} onPress={handleBackPress}>
-                    {/* Use theme color for icon */}
                     <Ionicons name="chevron-back" size={28} color={theme.onSurface} />
                 </TouchableOpacity>
                 <Text style={headerStyles.headerTitle}>Task Actions</Text>
@@ -112,14 +107,10 @@ const CustomHeader = ({ onSelectTab, selectedTab }: { onSelectTab: (tab: Selecte
             </View>
             <View style={headerStyles.categoryTabsBar}>
                 <TouchableOpacity style={headerStyles.actionButton} onPress={() => onSelectTab('routine')}>
-                    <Text style={[headerStyles.actionButtonText, selectedTab === 'routine' && headerStyles.actionButtonTextSelected]}>
-                        Routine Actions
-                    </Text>
+                    <Text style={[headerStyles.actionButtonText, selectedTab === 'routine' && headerStyles.actionButtonTextSelected]}>Routine Actions</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={headerStyles.actionButton} onPress={() => onSelectTab('log')}>
-                    <Text style={[headerStyles.actionButtonText, selectedTab === 'log' && headerStyles.actionButtonTextSelected]}>
-                        Log Specific Action
-                    </Text>
+                    <Text style={[headerStyles.actionButtonText, selectedTab === 'log' && headerStyles.actionButtonTextSelected]}>Log Specific Action</Text>
                 </TouchableOpacity>
                 <Animated.View style={[headerStyles.underline, { width: '50%' }, animatedUnderlineStyle]} />
             </View>
@@ -133,7 +124,6 @@ export default function ActionsScreen() {
 
     const [selectedTab, setSelectedTab] = useState<SelectedTab>('routine');
     const tabPosition = useSharedValue(selectedTab === 'routine' ? 0 : 1);
-
     const [isAddRoutineModalVisible, setIsAddRoutineModalVisible] = useState(false);
     const [currentActionsData, setCurrentActionsData] = useState<ActionItem[]>(initialActionsData);
 
@@ -141,22 +131,13 @@ export default function ActionsScreen() {
         tabPosition.value = withSpring(selectedTab === 'routine' ? 0 : 1, springConfig);
     }, [selectedTab, tabPosition]);
 
-    const routineAnimatedStyle = useAnimatedStyle(() => {
-        const translateX = interpolate(tabPosition.value, [0, 1], [0, -screenWidth]);
-        return { transform: [{ translateX }] };
-    });
-
-    const logAnimatedStyle = useAnimatedStyle(() => {
-        const translateX = interpolate(tabPosition.value, [0, 1], [screenWidth, 0]);
-        return { transform: [{ translateX }] };
-    });
+    const routineAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: interpolate(tabPosition.value, [0, 1], [0, -screenWidth]) }] }));
+    const logAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: interpolate(tabPosition.value, [0, 1], [screenWidth, 0]) }] }));
 
     const lightenColor = (hex: string, percent: number): string => {
         hex = hex.replace(/^\s*#|\s*$/g, '');
         if (hex.length === 3) { hex = hex.replace(/(.)/g, '$1$1'); }
-        let r = parseInt(hex.substring(0, 2), 16),
-            g = parseInt(hex.substring(2, 4), 16),
-            b = parseInt(hex.substring(4, 6), 16);
+        let r = parseInt(hex.substring(0, 2), 16), g = parseInt(hex.substring(2, 4), 16), b = parseInt(hex.substring(4, 6), 16);
         r = Math.min(255, Math.floor(r + (255 - r) * percent));
         g = Math.min(255, Math.floor(g + (255 - g) * percent));
         b = Math.min(255, Math.floor(b + (255 - b) * percent));
@@ -165,15 +146,11 @@ export default function ActionsScreen() {
 
     const handleSaveRoutineAction = (data: ModalRoutineActionData) => {
         const newAction: ActionItem = {
-            id: String(Date.now()),
-            title: data.title,
-            icon: data.icon,
-            iconColor: data.color,
-            backgroundColor: lightenColor(data.color, 0.85),
-            doneCount: 0,
+            id: String(Date.now()), title: data.title, icon: data.icon,
+            iconColor: data.color, backgroundColor: lightenColor(data.color, 0.85), doneCount: 0,
         };
         setCurrentActionsData(prevActions => [newAction, ...prevActions]);
-        setIsAddRoutineModalVisible(false);
+        setIsAddRoutineModalVisible(false); // Close the modal view
     };
 
     const handleCloseModal = () => {
@@ -185,12 +162,7 @@ export default function ActionsScreen() {
             <Stack.Screen
                 options={{
                     headerShown: true,
-                    header: () => (
-                        <CustomHeader
-                            onSelectTab={setSelectedTab}
-                            selectedTab={selectedTab}
-                        />
-                    ),
+                    header: () => (<CustomHeader onSelectTab={setSelectedTab} selectedTab={selectedTab} />),
                 }}
             />
             <View style={screenStyles.contentContainer}>
@@ -204,11 +176,7 @@ export default function ActionsScreen() {
                             contentContainerStyle={screenStyles.listContentStyle}
                             ListFooterComponent={<View style={{ height: 110 }} />}
                         />
-                        <TouchableOpacity
-                            style={screenStyles.addButton}
-                            onPress={() => setIsAddRoutineModalVisible(true)}
-                        >
-                            {/* Use theme color for icon */}
+                        <TouchableOpacity style={screenStyles.addButton} onPress={() => setIsAddRoutineModalVisible(true)}>
                             <Ionicons name="add" size={24} color={theme.onPrimaryContainer} />
                             <Text style={screenStyles.addButtonText}>Add Routine Action</Text>
                         </TouchableOpacity>
@@ -221,167 +189,76 @@ export default function ActionsScreen() {
                 </Animated.View>
             </View>
 
-            <AddRoutineActionModal
-                visible={isAddRoutineModalVisible}
-                onClose={handleCloseModal}
-                onSave={handleSaveRoutineAction}
-            />
+            {/* Conditional rendering of the custom modal view */}
+            {isAddRoutineModalVisible && (
+                // This Animated.View provides the overlay and centering
+                <Animated.View
+                    style={screenStyles.modalOverlay}
+                    entering={FadeIn.duration(200)} // Added Reanimated enter animation
+                // exiting={FadeOut.duration(200)} // Add exiting if desired, requires careful state management
+                >
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === "ios" ? "padding" : "height"}
+                        style={{ width: '100%', alignItems: 'center' }} // Necessary for KAV to work with centered content
+                    >
+                        <AddRoutineActionView
+                            onClose={handleCloseModal}
+                            onSave={handleSaveRoutineAction}
+                        />
+                    </KeyboardAvoidingView>
+                </Animated.View>
+            )}
         </SafeAreaView>
     );
 }
 
-// Moved StyleSheet creation into functions that accept theme
+// Styles (getScreenStyles, getCustomHeaderStyles, getActionCardStyles)
 const getScreenStyles = (theme: AppTheme) => StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: theme.background, // MD3: Main background for the screen
-    },
-    contentContainer: {
-        flex: 1,
-        backgroundColor: theme.surface, // MD3: Base surface for content areas
-        overflow: 'hidden',
-    },
-    pageContainer: {
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
-        left: 0,
-        right: 0,
-        width: screenWidth,
-    },
-    routineSection: {
-        flex: 1,
-        backgroundColor: theme.surface, // Matches content container or could be different
-    },
-    logSection: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-        backgroundColor: theme.surfaceContainerLow, // A slightly different surface
-    },
-    contentText: {
-        fontSize: 18,
-        color: theme.onSurfaceVariant,
-        textAlign: 'center',
-    },
-    listStyle: {
-        flex: 1,
-    },
-    listContentStyle: {
-        paddingHorizontal: 20,
-        paddingTop: 20,
-    },
+    safeArea: { flex: 1, backgroundColor: theme.background },
+    contentContainer: { flex: 1, backgroundColor: theme.surface, overflow: 'hidden' },
+    pageContainer: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, width: screenWidth },
+    routineSection: { flex: 1, backgroundColor: theme.surface },
+    logSection: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: theme.surfaceContainerLow },
+    contentText: { fontSize: 18, color: theme.onSurfaceVariant, textAlign: 'center' },
+    listStyle: { flex: 1 },
+    listContentStyle: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20 /* Adjust if needed for addButton */ },
     addButton: {
         position: 'absolute',
-        bottom: Platform.OS === 'android' ? 20 : 0,
-        left: 20,
-        right: 20,
-        backgroundColor: theme.primaryContainer, // MD3: Button background
-        borderRadius: 28, // MD3 Extended FAB often has larger radius
-        paddingVertical: 16, // Adjusted padding for FAB feel
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 10,
-        elevation: 3, // MD3 elevation
+        bottom: Platform.OS === 'android' ? 20 : 0, // Adjusted by user
+        left: 20, right: 20, backgroundColor: theme.primaryContainer,
+        borderRadius: 28, paddingVertical: 16, flexDirection: 'row',
+        justifyContent: 'center', alignItems: 'center', zIndex: 10, elevation: 3,
     },
-    addButtonText: {
-        color: theme.onPrimaryContainer, // MD3: Text on button
-        fontSize: 16,
-        fontWeight: '600', // Medium weight
-        marginLeft: 8,
+    addButtonText: { color: theme.onPrimaryContainer, fontSize: 16, fontWeight: '600', marginLeft: 8 },
+    // New style for the modal overlay container
+    modalOverlay: {
+        ...StyleSheet.absoluteFillObject, // Covers the whole screen
+        backgroundColor: 'rgba(0, 0, 0, 0.4)', // Semi-transparent background (less dim)
+        justifyContent: 'center', // Centers child vertically
+        alignItems: 'center',     // Centers child horizontally
+        zIndex: 1000, // Ensure it's on top
     },
 });
 
 const getCustomHeaderStyles = (theme: AppTheme) => StyleSheet.create({
-    customHeaderRoot: {
-        backgroundColor: theme.surface,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.outlineVariant, // Subtle border
-    },
-    topAppBar: {
-        height: 56,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 8, // Adjusted for icon touch areas
-    },
-    backButton: {
-        padding: 12, // Slightly larger touch area
-    },
-    headerTitle: {
-        color: theme.onSurface, // Text on header surface
-        fontSize: 20, // MD3 Title Large or Medium
-        fontWeight: '600',
-    },
-    headerRightPlaceholder: {
-        width: 28 + 24,
-    },
-    categoryTabsBar: {
-        flexDirection: 'row',
-        width: '100%',
-        position: 'relative',
-        backgroundColor: theme.surface, // Tabs background
-    },
-    actionButton: {
-        flex: 1,
-        paddingVertical: 15,
-        alignItems: 'center',
-    },
-    actionButtonText: {
-        color: theme.onSurfaceVariant, // Inactive tab text
-        fontSize: 14, // MD3 Label Large
-        fontWeight: '600',
-    },
-    actionButtonTextSelected: {
-        color: theme.primary, // Active tab text
-    },
-    underline: {
-        height: 3,
-        backgroundColor: theme.primary, // Active tab indicator
-        position: 'absolute',
-        bottom: 0,
-        borderRadius: 1.5, // Rounded indicator
-    },
+    customHeaderRoot: { backgroundColor: theme.surface, borderBottomWidth: 1, borderBottomColor: theme.outlineVariant },
+    topAppBar: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },
+    backButton: { padding: 12 },
+    headerTitle: { color: theme.onSurface, fontSize: 20, fontWeight: '600' },
+    headerRightPlaceholder: { width: 28 + 24 },
+    categoryTabsBar: { flexDirection: 'row', width: '100%', position: 'relative', backgroundColor: theme.surface },
+    actionButton: { flex: 1, paddingVertical: 15, alignItems: 'center' },
+    actionButtonText: { color: theme.onSurfaceVariant, fontSize: 14, fontWeight: '600' },
+    actionButtonTextSelected: { color: theme.primary },
+    underline: { height: 3, backgroundColor: theme.primary, position: 'absolute', bottom: 0, borderRadius: 1.5 },
 });
 
 const getActionCardStyles = (theme: AppTheme) => StyleSheet.create({
-    routineCard: {
-        backgroundColor: theme.surfaceContainer, // Use a standard container color
-        borderRadius: 12, // MD3 card radius
-        padding: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 16,
-    },
-    textContainer: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    routineTitle: {
-        fontSize: 16, // MD3 Title Medium / Body Large
-        fontWeight: '600',
-        color: theme.onSurface,
-    },
-    routineTime: {
-        fontSize: 14, // MD3 Body Medium
-        color: theme.onSurfaceVariant, // Less emphasized text
-        marginTop: 4,
-    },
-    counterContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    counterButton: {
-        padding: 8, // Make touch target larger
-    },
+    routineCard: { backgroundColor: theme.surfaceContainer, borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    iconContainer: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+    textContainer: { flex: 1, justifyContent: 'center' },
+    routineTitle: { fontSize: 16, fontWeight: '600', color: theme.onSurface },
+    routineTime: { fontSize: 14, color: theme.onSurfaceVariant, marginTop: 4 },
+    counterContainer: { flexDirection: 'row', alignItems: 'center' },
+    counterButton: { padding: 8 },
 });

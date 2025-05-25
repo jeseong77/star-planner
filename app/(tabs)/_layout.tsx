@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Animated, Platform, StyleProp } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -8,6 +8,8 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { BottomTabBar, BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { ViewStyle } from 'react-native/Libraries/StyleSheet/StyleSheetTypes';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -17,6 +19,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
         headerShown: false,
+        headerPressColor: 'transparent',
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
         tabBarStyle: Platform.select({
@@ -56,6 +59,7 @@ export default function TabLayout() {
           animation: 'none'
         }}
       />
+      
     </Tabs>
   );
 }

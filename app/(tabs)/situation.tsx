@@ -1,108 +1,67 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Stack } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  Platform,
+  ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
-  ScrollView,
-  Platform,
+  View,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-// Import useSafeAreaInsets and EdgeInsets type
-import { useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
+import { useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useAppTheme, type AppTheme } from '../../contexts/AppThemeProvider'; // Adjust path
-import type { Problem, Task } from '../../types'; // Adjust path
+import ProblemItem from '../../components/ProblemItem';
+import TaskItem from '../../components/TaskItem';
+import type { MockTask } from '../../components/TaskItem';
 
-// --- Mock Data & Extended Types (as before) ---
-interface MockProblem extends Problem {
-  iconName: keyof typeof Ionicons.glyphMap;
-}
-interface MockTask extends Task {
-  iconName: keyof typeof Ionicons.glyphMap;
-  dueDateText: string;
-}
+import AddProblemBottomSheet from '@/components/AddProblemBottomSheet';
+import { useAppStore } from '@/store/appStore';
+import { useAppTheme, type AppTheme } from '../../contexts/AppThemeProvider';
+import type { Problem, Task } from '../../types';
 
-const MOCK_SITUATION_DESCRIPTION = "I'm currently overweight and want to improve my health. My goal is to lose 20 pounds in the next 3 months through a combination of diet and exercise. I need a structured plan to track my progress and stay motivated.";
-const MOCK_PROBLEMS_DATA: MockProblem[] = [
-  { id: 'p1', name: 'Obesity', isResolved: false, createdAt: new Date().toISOString(), taskIds: ['t1', 't2', 't3', 't4'], iconName: 'barbell-outline' },
-  { id: 'p2', name: 'Professional Skills', isResolved: false, createdAt: new Date().toISOString(), taskIds: ['t5', 't6'], iconName: 'school-outline' },
-  { id: 'p3', name: 'Financial Debt', isResolved: false, createdAt: new Date().toISOString(), taskIds: ['t7'], iconName: 'cash-outline' },
-];
-const MOCK_TASKS_DATA: MockTask[] = [
-  { id: 't1', problemId: 'p1', name: 'Follow a balanced diet plan', isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], iconName: 'restaurant-outline', dueDateText: 'Due: In 2 days' },
-  { id: 't2', problemId: 'p1', name: 'Exercise 30 mins daily', isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], iconName: 'walk-outline', dueDateText: 'Due: Tomorrow' },
-  { id: 't3', problemId: 'p1', name: 'Track weight weekly', isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], iconName: 'scale-outline', dueDateText: 'Due: In 5 days' },
-  { id: 't4', problemId: 'p1', name: 'Drink 8 glasses of water', isCompleted: true, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], iconName: 'water-outline', dueDateText: 'Due: Today' },
-  { id: 't5', problemId: 'p2', name: 'Complete online course', isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], iconName: 'laptop-outline', dueDateText: 'Due: In 3 weeks' },
-  { id: 't6', problemId: 'p2', name: 'Network with professionals', isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], iconName: 'people-outline', dueDateText: 'Ongoing' },
-  { id: 't7', problemId: 'p3', name: 'Create a budget plan', isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], iconName: 'document-text-outline', dueDateText: 'Due: Next Monday' },
-];
-
-// --- TaskItem and ProblemItem components (remain the same as before, they use theme passed or via hook) ---
-const TaskItem = ({ task, theme }: { task: MockTask, theme: AppTheme }) => {
-  const styles = useMemo(() => getTaskItemStyles(theme), [theme]);
-  const handlePress = () => {
-    router.push({ pathname: '/actions', params: { taskId: task.id, problemId: task.problemId } });
-  };
-  return (
-    <TouchableOpacity style={styles.taskItemContainer} onPress={handlePress}>
-      <Ionicons name={task.iconName} size={22} color={theme.primary} style={styles.taskIcon} />
-      <View style={styles.taskTextContainer}>
-        <Text style={styles.taskName}>{task.name}</Text>
-        <Text style={styles.taskDueDate}>{task.dueDateText}</Text>
-      </View>
-      <Ionicons name="chevron-forward-outline" size={22} color={theme.onSurfaceVariant} />
-    </TouchableOpacity>
-  );
-};
-
-const ProblemItem = ({ problem, tasks, isExpanded, onToggleExpand }: {
-  problem: MockProblem,
-  tasks: MockTask[],
-  isExpanded: boolean,
-  onToggleExpand: () => void,
-}) => {
-  const theme = useAppTheme();
-  const styles = useMemo(() => getProblemItemStyles(theme), [theme]);
-
-  return (
-    <View style={styles.problemCard}>
-      <TouchableOpacity style={styles.problemHeader} onPress={onToggleExpand}>
-        <View style={styles.problemInfo}>
-          <Ionicons name={problem.iconName} size={24} color={theme.primary} style={styles.problemIcon} />
-          <View>
-            <Text style={styles.problemName}>{problem.name}</Text>
-            <Text style={styles.problemTaskCount}>{tasks.length} tasks</Text>
-          </View>
-        </View>
-        <Ionicons name={isExpanded ? "chevron-up-outline" : "chevron-down-outline"} size={24} color={theme.onSurfaceVariant} />
-      </TouchableOpacity>
-      {isExpanded && (
-        <View style={styles.tasksListContainer}>
-          {tasks.map(task => <TaskItem key={task.id} task={task} theme={theme} />)}
-        </View>
-      )}
-    </View>
-  );
-};
-
-
-export default function SituationScreen() {
+export default function Situation() {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => getScreenStyles(theme, insets.bottom), [theme, insets.bottom]);
+  const styles = useMemo(() => getStyles(theme, insets.bottom), [theme, insets.bottom]);
 
-  const [description, setDescription] = useState(MOCK_SITUATION_DESCRIPTION);
-  const [tempDescription, setTempDescription] = useState(MOCK_SITUATION_DESCRIPTION);
+  const situation = useAppStore(state => state.situation);
+  const storeProblems = useAppStore(state => state.problems);
+  const storeTasks = useAppStore(state => state.tasks);
+  const hydrateFromDB = useAppStore(state => state.hydrateFromDB);
+  const setSituationDescription = useAppStore(state => state.setSituationDescription);
+  const isLoadingStore = useAppStore(state => state.situation === undefined);
+
+  const [tempDescription, setTempDescription] = useState('');
   const [isEditingDescription, setIsEditingDescription] = useState(false);
-
-  const [problemsData, setProblemsData] = useState<MockProblem[]>(MOCK_PROBLEMS_DATA);
-  const [tasksData, setTasksData] = useState<MockTask[]>(MOCK_TASKS_DATA);
   const [expandedProblemIds, setExpandedProblemIds] = useState<string[]>([]);
+  const isAddProblemSheetOpen = useSharedValue(false);
+
+  const handlePresentAddProblemSheet = useCallback(() => {
+    isAddProblemSheetOpen.value = true;
+  }, [isAddProblemSheetOpen]);
+
+  const handleCloseAddProblemSheet = useCallback(() => {
+    isAddProblemSheetOpen.value = false;
+  }, [isAddProblemSheetOpen]);
+
+  useEffect(() => {
+    hydrateFromDB();
+  }, [hydrateFromDB]);
+
+  useEffect(() => {
+    const currentDescription = situation?.description || '';
+    if (situation) {
+      if (tempDescription !== currentDescription && !isEditingDescription) {
+        setTempDescription(currentDescription);
+      }
+    } else if (!isLoadingStore && tempDescription !== '') {
+      setTempDescription('');
+    }
+  }, [situation, isLoadingStore, isEditingDescription]);
 
   const handleToggleProblemExpand = (problemId: string) => {
     setExpandedProblemIds(prev =>
@@ -110,31 +69,104 @@ export default function SituationScreen() {
     );
   };
 
-  const handleSaveDescription = () => {
-    setDescription(tempDescription.slice(0, 500));
-    setIsEditingDescription(false);
+  const handleSaveDescription = async () => {
+    try {
+      await setSituationDescription(tempDescription.slice(0, 500));
+      setIsEditingDescription(false);
+    } catch (error) {
+      console.error("Failed to save description:", error);
+    }
   };
 
   const handleCancelEditDescription = () => {
-    setTempDescription(description);
+    setTempDescription(situation?.description || '');
     setIsEditingDescription(false);
   };
 
-  const handleAddProblem = () => {
-    console.log("Add Problem pressed");
-  };
+  const problemsToRender: Problem[] = useMemo(() => {
+    if (!situation || !storeProblems) return [];
+    return situation.problemIds
+      .map(id => storeProblems[id]) // This may return (Problem | undefined)[]
+      // MODIFICATION: Use an explicit type guard
+      .filter((p): p is Problem => p !== undefined && p !== null);
+  }, [situation, storeProblems]);
 
-  const renderProblemItem = ({ item }: { item: MockProblem }) => {
-    const relevantTasks = tasksData.filter(task => task.problemId === item.id);
+  const getTasksForProblem = useCallback((problemId: string): MockTask[] => {
+    const problem = storeProblems[problemId];
+    if (!problem || !storeTasks) return [];
+
+    return problem.taskIds
+      .map(taskId => storeTasks[taskId]) // This may return (Task | undefined)[]
+      // MODIFICATION: Use an explicit type guard
+      .filter((t): t is Task => t !== undefined && t !== null)
+      .map(t => { // t is now correctly typed as Task
+        const taskForDisplay: MockTask = {
+          ...t,
+          iconName: (t as any).iconName || 'list-outline',
+        };
+        return taskForDisplay;
+      });
+  }, [storeProblems, storeTasks]);
+
+  if (isLoadingStore) {
     return (
-      <ProblemItem
-        problem={item}
-        tasks={relevantTasks}
-        isExpanded={expandedProblemIds.includes(item.id)}
-        onToggleExpand={() => handleToggleProblemExpand(item.id)}
-      />
+      <View style={[styles.screenContainer, styles.centered]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={{ marginTop: 10, color: theme.onBackground }}>Loading situation...</Text>
+      </View>
     );
-  };
+  }
+
+  if (!situation) {
+    return (
+      <View style={[styles.screenContainer, styles.centered]}>
+        <Text style={[styles.descriptionText, { marginBottom: 20, textAlign: 'center' }]}>
+          Welcome to STAR Planner!{'\n'}Let's define your current situation.
+        </Text>
+        {!isEditingDescription && (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.saveButton, { width: '90%', marginBottom: 20 }]}
+            onPress={() => {
+              setTempDescription('');
+              setIsEditingDescription(true);
+            }}>
+            <Text style={styles.saveButtonText}>Set Situation Description</Text>
+          </TouchableOpacity>
+        )}
+        {isEditingDescription && (
+          <View style={{ width: '90%', marginTop: 0 }}>
+            <Text style={[styles.sectionTitle, { marginBottom: 10, textAlign: 'center' }]}>Describe Your Situation</Text>
+            <TextInput
+              style={styles.textInput}
+              value={tempDescription}
+              onChangeText={setTempDescription}
+              multiline
+              maxLength={500}
+              autoFocus
+              placeholderTextColor={theme.onSurfaceVariant}
+              selectionColor={theme.primary}
+              placeholder="What is your current situation? What are your overarching goals?"
+            />
+            <Text style={styles.charCount}>{tempDescription.length}/500</Text>
+            <View style={styles.editActionsContainer}>
+              <TouchableOpacity style={[styles.actionButton, styles.cancelButton]} onPress={() => {
+                setIsEditingDescription(false);
+                setTempDescription('');
+              }}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSaveDescription}>
+                <Text style={styles.saveButtonText}>Save Description</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        <Text style={[styles.descriptionText, { fontSize: 14, opacity: 0.7, textAlign: 'center' }]}>
+          After describing your situation, you can add specific problems you want to address.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screenContainer}>
@@ -142,27 +174,25 @@ export default function SituationScreen() {
         options={{
           title: 'Situation',
           headerShown: true,
-          headerStyle: {
-            backgroundColor: theme.surface,
-          },
+          headerStyle: { backgroundColor: theme.surface },
           headerTintColor: theme.onSurface,
-          headerTitleStyle: {
-            color: theme.onSurface,
-            fontWeight: '600',
-          },
+          headerTitleStyle: { color: theme.onSurface, fontWeight: '600' },
         }}
       />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Description Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Description</Text>
             {!isEditingDescription && (
-              <TouchableOpacity style={styles.editButton} onPress={() => { setTempDescription(description); setIsEditingDescription(true); }}>
+              <TouchableOpacity style={styles.editButton} onPress={() => {
+                setTempDescription(situation?.description || '');
+                setIsEditingDescription(true);
+              }}>
                 <Ionicons name="pencil-outline" size={18} color={theme.primary} />
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
@@ -179,6 +209,7 @@ export default function SituationScreen() {
                 autoFocus
                 placeholderTextColor={theme.onSurfaceVariant}
                 selectionColor={theme.primary}
+                placeholder="Describe your current situation and overall goals..."
               />
               <Text style={styles.charCount}>{tempDescription.length}/500</Text>
               <View style={styles.editActionsContainer}>
@@ -191,21 +222,29 @@ export default function SituationScreen() {
               </View>
             </View>
           ) : (
-            <Text style={styles.descriptionText}>{description}</Text>
+            <Text style={styles.descriptionText}>
+              {situation?.description || "No description set. Tap 'Edit' to add one."}
+            </Text>
           )}
         </View>
 
-        {/* Problems Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Problems</Text>
-            <TouchableOpacity style={styles.addProblemButton} onPress={handleAddProblem}>
-              <Ionicons name="add-circle-outline" size={22} color={theme.primary} />
-              <Text style={styles.addProblemButtonText}>Add Problem</Text>
-            </TouchableOpacity>
+            {situation?.description ? (
+              <TouchableOpacity style={styles.addProblemButton} onPress={handlePresentAddProblemSheet}>
+                <Ionicons name="add-circle-outline" size={22} color={theme.primary} />
+                <Text style={styles.addProblemButtonText}>Add Problem</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.emptyStateTextSmall}>Set a description first to add problems.</Text>
+            )}
           </View>
-          {problemsData.map(problem => {
-            const relevantTasks = tasksData.filter(task => task.problemId === problem.id);
+          {problemsToRender.length === 0 && situation?.description ? (
+            <Text style={styles.emptyStateText}>No problems defined yet. Tap "Add Problem" to get started.</Text>
+          ) : null}
+          {problemsToRender.map(problem => {
+            const relevantTasks = getTasksForProblem(problem.id);
             return (
               <ProblemItem
                 key={problem.id}
@@ -218,26 +257,38 @@ export default function SituationScreen() {
           })}
         </View>
       </ScrollView>
+
+      <AddProblemBottomSheet
+        isOpen={isAddProblemSheetOpen}
+        onClose={handleCloseAddProblemSheet}
+      />
     </View>
   );
 }
 
-const getScreenStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({ // Accept bottomInset
+const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
   screenContainer: {
     flex: 1,
     backgroundColor: theme.background,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
-    paddingBottom: 16,
+    paddingBottom: bottomInset + 16,
   },
   sectionContainer: {
     paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: theme.surface,
-    marginTop: 8,
+    marginTop: 12,
+    marginHorizontal: 10,
     borderRadius: Platform.OS === 'ios' ? 12 : 8,
   },
   sectionHeader: {
@@ -305,12 +356,14 @@ const getScreenStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.cre
   },
   saveButton: {
     backgroundColor: theme.primary,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonText: {
     color: theme.onPrimary,
     fontWeight: '500',
-    fontSize: 14,
+    fontSize: 16,
   },
   addProblemButton: {
     flexDirection: 'row',
@@ -324,64 +377,15 @@ const getScreenStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.cre
     color: theme.primary,
     fontWeight: '500',
   },
-});
-
-const getProblemItemStyles = (theme: AppTheme) => StyleSheet.create({
-  problemCard: {
-    backgroundColor: theme.surfaceContainerHigh,
-    borderRadius: 12,
-    marginBottom: 12,
-    padding: 16,
+  emptyStateText: {
+    fontSize: 16,
+    color: theme.onSurfaceVariant,
+    textAlign: 'center',
+    paddingVertical: 20,
   },
-  problemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  problemInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  problemIcon: {
-    marginRight: 12,
-  },
-  problemName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.onSurface,
-  },
-  problemTaskCount: {
+  emptyStateTextSmall: {
     fontSize: 14,
     color: theme.onSurfaceVariant,
-  },
-  tasksListContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.outlineVariant,
-  },
-});
-
-const getTaskItemStyles = (theme: AppTheme) => StyleSheet.create({
-  taskItemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  taskIcon: {
-    marginRight: 12,
-  },
-  taskTextContainer: {
-    flex: 1,
-  },
-  taskName: {
-    fontSize: 16,
-    color: theme.onSurface,
-  },
-  taskDueDate: {
-    fontSize: 12,
-    color: theme.onSurfaceVariant,
-    marginTop: 2,
+    fontStyle: 'italic',
   },
 });

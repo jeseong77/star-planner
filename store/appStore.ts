@@ -19,7 +19,6 @@ import {
   deleteTaskFromDB, // This should handle cascades in SQL or its own logic
   getActionsFromDB, // Example: for description and lastModified
   getProblemsFromDB,
-  // deleteActionFromDB, // If needed independently
   getResultsFromDB,
   getSituationFromDB, // This should handle cascades in SQL or its own logic
   getTasksFromDB,
