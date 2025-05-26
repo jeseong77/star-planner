@@ -15,12 +15,12 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ProblemItem from '../../components/ProblemItem';
-import type { MockTask } from '../../components/TaskItem';
+// import type { MockTask } from '../../components/TaskItem'; // Removed MockTask import
 
 import AddProblemBottomSheet from '@/components/AddProblemBottomSheet';
 import { useAppStore } from '@/store/appStore';
 import { useAppTheme, type AppTheme } from '../../contexts/AppThemeProvider';
-import type { Problem, Task } from '../../types';
+import type { Problem, Task } from '../../types'; // Task is already imported
 
 export default function Situation() {
   const theme = useAppTheme();
@@ -85,28 +85,18 @@ export default function Situation() {
   const problemsToRender: Problem[] = useMemo(() => {
     if (!situation || !storeProblems) return [];
     return situation.problemIds
-      .map(id => storeProblems[id]) // This may return (Problem | undefined)[]
-      // MODIFICATION: Use an explicit type guard
+      .map(id => storeProblems[id])
       .filter((p): p is Problem => p !== undefined && p !== null);
   }, [situation, storeProblems]);
 
-  const getTasksForProblem = useCallback((problemId: string): MockTask[] => {
+  const getTasksForProblem = useCallback((problemId: string): Task[] => { // Return type changed to Task[]
     const problem = storeProblems[problemId];
     if (!problem || !storeTasks) return [];
 
     return problem.taskIds
-      .map(taskId => storeTasks[taskId]) // This may return (Task | undefined)[]
-      // MODIFICATION: Use an explicit type guard
-      .filter((t): t is Task => t !== undefined && t !== null)
-      .map(t => { // t is now correctly typed as Task
-        const taskForDisplay: MockTask = {
-          ...t,
-          dueDateText: t.completionDate
-            ? new Date(t.completionDate).toLocaleDateString()
-            : 'No due date',
-        };
-        return taskForDisplay;
-      });
+      .map(taskId => storeTasks[taskId])
+      .filter((t): t is Task => t !== undefined && t !== null);
+    // Removed the .map() that converted Task to MockTask and added dueDateText
   }, [storeProblems, storeTasks]);
 
   if (isLoadingStore) {
@@ -241,7 +231,7 @@ export default function Situation() {
               <Text style={styles.emptyStateTextSmall}>Set a description first to add problems.</Text>
             )}
           </View>
-          {problemsToRender.length === 0 ? (
+          {problemsToRender.length === 0 && situation?.description ? ( // Show only if description is set
             <Text style={styles.emptyStateText}>No problems defined yet. Tap "Add Problem" to get started.</Text>
           ) : null}
           {problemsToRender.map(problem => {
@@ -250,7 +240,7 @@ export default function Situation() {
               <ProblemItem
                 key={problem.id}
                 problem={problem}
-                tasks={relevantTasks}
+                tasks={relevantTasks} // This is now Task[]
                 isExpanded={expandedProblemIds.includes(problem.id)}
                 onToggleExpand={() => handleToggleProblemExpand(problem.id)}
               />
@@ -287,9 +277,9 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
   sectionContainer: {
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: theme.surface,
-    marginTop: 12,
-    borderRadius: Platform.OS === 'ios' ? 12 : 8,
+    backgroundColor: theme.surface, // Changed from surfaceContainerHigh for main sections
+    marginTop: 12, // Added consistent margin for sections
+    borderRadius: Platform.OS === 'ios' ? 12 : 8, // Consistent rounding
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -323,13 +313,13 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: theme.onSurface,
-    backgroundColor: theme.surfaceContainerLow,
+    backgroundColor: theme.surfaceContainerLow, // For text input background
     borderColor: theme.outline,
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
     minHeight: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: 'top', // For Android multiline
   },
   charCount: {
     fontSize: 12,
@@ -348,7 +338,8 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 20,
   },
-  cancelButton: {},
+  cancelButton: {
+  },
   cancelButtonText: {
     color: theme.primary,
     fontWeight: '500',
@@ -356,20 +347,22 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
   },
   saveButton: {
     backgroundColor: theme.primary,
-    paddingHorizontal: 20,
-    alignItems: 'center',
+    paddingHorizontal: 20, // More horizontal padding for primary action
+    alignItems: 'center', // Ensure text is centered if button width is fixed
     justifyContent: 'center',
   },
   saveButtonText: {
     color: theme.onPrimary,
     fontWeight: '500',
-    fontSize: 16,
+    fontSize: 16, // Slightly larger for primary action text
   },
   addProblemButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 4, // Similar to edit button
     paddingHorizontal: 8,
+    // backgroundColor: theme.surfaceContainerHighest,
+    // borderRadius: 20,
   },
   addProblemButtonText: {
     marginLeft: 6,
@@ -381,11 +374,12 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
     fontSize: 16,
     color: theme.onSurfaceVariant,
     textAlign: 'center',
-    paddingVertical: 20,
+    paddingVertical: 20, // Give it some space
   },
   emptyStateTextSmall: {
     fontSize: 14,
-    color: theme.onSurfaceVariant,
+    color: theme.onSurfaceVariant, // Use a slightly less prominent color or style
     fontStyle: 'italic',
+    // textAlign: 'right', // Example if it needs to align with a button
   },
 });

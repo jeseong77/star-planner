@@ -115,7 +115,7 @@ export default function ResultScreen() {
         options={{
           title: "Results",
           headerShown: true,
-          headerStyle: { backgroundColor: theme.surfaceContainerLow }, // Slightly different from screen bg
+          headerStyle: { backgroundColor: theme.background },
           headerTintColor: theme.onSurface,
           headerTitleStyle: { color: theme.onSurface, fontWeight: "600" },
         }}

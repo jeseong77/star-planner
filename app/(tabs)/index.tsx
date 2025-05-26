@@ -3,10 +3,10 @@ import React, { useState, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { Problem } from '@/types'; // 경로 확인 및 수정 필요
-import { useAppTheme, type AppTheme } from '../../contexts/AppThemeProvider'; // 경로 확인 및 수정 필요
-import { ProblemCustomHeader } from '../../components/ProblemCustomHeader'; // 이름 및 경로 확인/수정 필요
-import { TaskItems, type MockTask } from '../../components/TaskItem'; // 경로 확인 및 수정 필요
+import type { Problem, Task } from '@/types'; // Added Task import
+import { useAppTheme, type AppTheme } from '../../contexts/AppThemeProvider';
+import { ProblemCustomHeader } from '../../components/ProblemCustomHeader';
+import { TaskItems } from '../../components/TaskItem'; // Removed MockTask import
 
 // --- Mock Data ---
 const MOCK_PROBLEMS: Problem[] = [
@@ -16,15 +16,15 @@ const MOCK_PROBLEMS: Problem[] = [
   { id: "p4", name: "Stress", isResolved: false, createdAt: new Date().toISOString(), taskIds: ["t8"], },
 ];
 
-const MOCK_TASKS: MockTask[] = [
-  { id: "t1", problemId: "p1", name: "Prioritize tasks", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], dueDateText: "Due Today", },
-  { id: "t2", problemId: "p1", name: "Break down large tasks", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], dueDateText: "Due Tomorrow", },
-  { id: "t3", problemId: "p1", name: "Use time-blocking", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], dueDateText: "Due in 2 days", },
-  { id: "t4", problemId: "p1", name: "Eliminate distractions", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], dueDateText: "Due in 3 days", },
-  { id: "t5", problemId: "p1", name: "Review and adjust", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], dueDateText: "Due in 4 days", },
-  { id: "t6", problemId: "p2", name: "Meditate for 10 minutes", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], dueDateText: "Daily", },
-  { id: "t7", problemId: "p2", name: "Pomodoro Technique", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], dueDateText: "For focus work", },
-  { id: "t8", problemId: "p4", name: "Deep breathing exercises", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [], dueDateText: "When stressed", },
+const MOCK_TASKS: Task[] = [ // Changed to Task[]
+  { id: "t1", problemId: "p1", name: "Prioritize tasks", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [] },
+  { id: "t2", problemId: "p1", name: "Break down large tasks", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [] },
+  { id: "t3", problemId: "p1", name: "Use time-blocking", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [] },
+  { id: "t4", problemId: "p1", name: "Eliminate distractions", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [] },
+  { id: "t5", problemId: "p1", name: "Review and adjust", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [] },
+  { id: "t6", problemId: "p2", name: "Meditate for 10 minutes", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [] },
+  { id: "t7", problemId: "p2", name: "Pomodoro Technique", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [] },
+  { id: "t8", problemId: "p4", name: "Deep breathing exercises", isCompleted: false, createdAt: new Date().toISOString(), actionIds: [], routineActions: [] },
 ];
 // --- End Mock Data ---
 
@@ -34,7 +34,7 @@ export default function HomeScreen() {
   const styles = useMemo(() => getScreenStyles(theme), [theme]);
 
   const [problems, setProblems] = useState<Problem[]>(MOCK_PROBLEMS);
-  const [tasks, setTasks] = useState<MockTask[]>(MOCK_TASKS);
+  const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS); // Changed to Task[]
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(
     MOCK_PROBLEMS.length > 0 ? MOCK_PROBLEMS[0].id : null
   );
@@ -61,7 +61,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <ProblemCustomHeader // 이름 변경
+      <ProblemCustomHeader
         problems={problems}
         selectedProblemId={selectedProblemId}
         onSelectProblem={handleSelectProblem}

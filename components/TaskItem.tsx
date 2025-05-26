@@ -1,19 +1,16 @@
-// components/TaskItems.tsx
+// components/TaskItem.tsx
 import React, { useMemo, useCallback } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { Problem, Task } from '@/types';
+import type { Problem, Task } from '@/types'; // Ensure Task is imported
 import { useAppTheme, type AppTheme } from '../contexts/AppThemeProvider';
 
-// MockTask 타입을 여기서 export 하여 index.tsx에서 사용합니다.
-export interface MockTask extends Task {
-    dueDateText: string;
-}
+// MockTask interface removed
 
 // --- TaskCard (내부 컴포넌트) ---
 interface TaskCardProps {
-    task: MockTask;
+    task: Task; // Changed from MockTask to Task
 }
 
 const taskCardStyles = (theme: AppTheme) =>
@@ -37,12 +34,9 @@ const taskCardStyles = (theme: AppTheme) =>
             fontSize: 16,
             fontWeight: '500',
             color: theme.onSurface,
-            marginBottom: 3,
+            // marginBottom: 3, // Removed as dueDateText is gone
         },
-        taskDueDate: {
-            fontSize: 13,
-            color: theme.onSurfaceVariant,
-        },
+        // taskDueDate style removed
         chevronContainer: {
             paddingLeft: 16,
             justifyContent: 'center',
@@ -50,7 +44,7 @@ const taskCardStyles = (theme: AppTheme) =>
         },
     });
 
-const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     const theme = useAppTheme();
     const styles = useMemo(() => taskCardStyles(theme), [theme]);
 
@@ -65,7 +59,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
         <TouchableOpacity style={styles.taskCard} onPress={handleNavigateToActions}>
             <View style={styles.taskInfo}>
                 <Text style={styles.taskTitle}>{task.name}</Text>
-                <Text style={styles.taskDueDate}>{task.dueDateText}</Text>
+                {/* <Text style={styles.taskDueDate}>{task.dueDateText}</Text> removed */}
             </View>
             <View style={styles.chevronContainer}>
                 <Ionicons
@@ -82,7 +76,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
 
 // --- TaskItems (메인 컴포넌트) ---
 interface TaskItemsProps {
-    tasks: MockTask[];
+    tasks: Task[]; // Changed from MockTask[] to Task[]
     selectedProblem: Problem | undefined;
 }
 
@@ -119,7 +113,7 @@ export const TaskItems: React.FC<TaskItemsProps> = ({ tasks, selectedProblem }) 
     const styles = useMemo(() => getTaskListStyles(theme), [theme]);
 
     const renderTaskCard = useCallback(
-        ({ item }: { item: MockTask }) => <TaskCard task={item} />, // 내부 TaskCard 사용
+        ({ item }: { item: Task }) => <TaskCard task={item} />, // Changed item type to Task
         []
     );
 

@@ -64,7 +64,6 @@ const ProblemChip: React.FC<ProblemChipProps> = ({ problem, onPress, isSelected 
         </TouchableOpacity>
     );
 };
-// --- End ProblemChip ---
 
 
 // --- ProblemCustomHeader (메인 컴포넌트 - 이름 변경) ---
@@ -103,7 +102,7 @@ const getHeaderStyles = (theme: AppTheme) =>
         },
     });
 
-export const ProblemCustomHeader: React.FC<ProblemCustomHeaderProps> = ({ // 컴포넌트 이름 변경
+export const ProblemCustomHeader: React.FC<ProblemCustomHeaderProps> = ({
     problems,
     selectedProblemId,
     onSelectProblem,

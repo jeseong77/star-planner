@@ -2,267 +2,152 @@
 
 /**
  * Material Design 3 color schemes for the app.
- * Generated from Material Theme Builder with seed color: #63A002.
- *
- * It's recommended to use these roles with a ThemeProvider and a custom hook
- * (like `useAppTheme` that we discussed) for robust theme integration.
+ * This theme, "Sunset Glow", features a warm and energetic palette with
+ * Orange (primary), Red (secondary), and Yellow/Gold (tertiary) accents,
+ * inspired by modern Material Design principles for a vibrant and engaging UI.
  */
 
 const MD3LightTheme = {
-  primary: "#4C662B",
-  surfaceTint: "#4C662B",
+  primary: "#F26A00", // Vibrant Orange (e.g., Orange50)
   onPrimary: "#FFFFFF",
-  primaryContainer: "#CDEDA3",
-  onPrimaryContainer: "#0F1F02", // Corrected: Typical Tone 10 for Primary 90 container
-  secondary: "#586249",
+  primaryContainer: "#FFDDB7", // Light Orange (Orange90)
+  onPrimaryContainer: "#4E1E00", // Dark Orange (Orange10)
+  secondary: "#C62828", // Fiery Red (e.g., Red50)
   onSecondary: "#FFFFFF",
-  secondaryContainer: "#DCE7C8",
-  onSecondaryContainer: "#151E0B",
-  tertiary: "#386663",
+  secondaryContainer: "#FFDAD6", // Light Red (Red90)
+  onSecondaryContainer: "#410002", // Dark Red (Red10)
+  tertiary: "#755B00", // Deep Gold/Yellow (e.g., Yellow40, for text contrast)
   onTertiary: "#FFFFFF",
-  tertiaryContainer: "#BCECE7",
-  onTertiaryContainer: "#00201E",
-  error: "#BA1A1A",
+  tertiaryContainer: "#FFDF90", // Light Yellow (Yellow90)
+  onTertiaryContainer: "#241A00", // Dark Yellow (Yellow10)
+
+  error: "#B3261E", // Standard Error Red
   onError: "#FFFFFF",
-  errorContainer: "#FFDAD6",
-  onErrorContainer: "#410002", // Corrected: Typical Tone 10 for Error 90 container
-  background: "#F9FAEF",
-  onBackground: "#1A1C16",
-  surface: "#F9FAEF",
-  onSurface: "#1A1C16",
-  surfaceVariant: "#E1E4D5",
-  onSurfaceVariant: "#44483D",
-  outline: "#75796C",
-  outlineVariant: "#C5C8BA",
+  errorContainer: "#F9DEDC",
+  onErrorContainer: "#410E0B",
+
+  background: "#FFFBFA", // Warm Off-White (Neutral99)
+  onBackground: "#1F1C1A", // Very Dark Warm Gray (Neutral10)
+  surface: "#FFFBFA", // Warm Off-White
+  onSurface: "#1F1C1A", // Very Dark Warm Gray
+  surfaceVariant: "#F0E2D2", // Warm Light Gray (NeutralVariant90)
+  onSurfaceVariant: "#4D4539", // Warm Dark Gray (NeutralVariant30)
+  surfaceTint: "#F26A00", // Same as primary
+
+  outline: "#817567", // Warm Medium Gray (NeutralVariant50)
+  outlineVariant: "#D3C4B4", // Warm Light Gray (NeutralVariant80)
+
   shadow: "#000000",
   scrim: "#000000",
-  inverseSurface: "#2F312A",
-  inverseOnSurface: "#F1F2E6",
-  inversePrimary: "#B1D18A",
-  primaryFixed: "#CDEDA3",
-  onPrimaryFixed: "#102000",
-  primaryFixedDim: "#B1D18A",
-  onPrimaryFixedVariant: "#354E16",
-  secondaryFixed: "#DCE7C8",
-  onSecondaryFixed: "#151E0B",
-  secondaryFixedDim: "#BFCBAD",
-  onSecondaryFixedVariant: "#404A33",
-  tertiaryFixed: "#BCECE7",
-  onTertiaryFixed: "#00201E",
-  tertiaryFixedDim: "#A0D0CB",
-  onTertiaryFixedVariant: "#1F4E4B",
-  surfaceDim: "#DADBD0",
-  surfaceBright: "#F9FAEF",
-  surfaceContainerLowest: "#FFFFFF",
-  surfaceContainerLow: "#F3F4E9",
-  surfaceContainer: "#EEEFE3",
-  surfaceContainerHigh: "#E8E9DE",
-  surfaceContainerHighest: "#E2E3D8",
+
+  inverseSurface: "#35302B", // Warm Dark Gray (Neutral20)
+  inverseOnSurface: "#F9F0E9", // Warm Off-White (Neutral95)
+  inversePrimary: "#FFB776", // Light Orange (Orange80 for use on dark inverse surface)
+
+  primaryFixed: "#FFDDB7",
+  onPrimaryFixed: "#4E1E00",
+  primaryFixedDim: "#FFB776",
+  onPrimaryFixedVariant: "#B34D00", // Darker Orange
+
+  secondaryFixed: "#FFDAD6",
+  onSecondaryFixed: "#410002",
+  secondaryFixedDim: "#FFB4A9",
+  onSecondaryFixedVariant: "#A8000D", // Darker Red
+
+  tertiaryFixed: "#FFDF90",
+  onTertiaryFixed: "#241A00",
+  tertiaryFixedDim: "#EAC248", // Gold
+  onTertiaryFixedVariant: "#584400", // Darker Gold
+
+  surfaceDim: "#E2D8CF", // Slightly darker warm neutral
+  surfaceBright: "#FFFBFA", // Same as surface or slightly brighter
+  surfaceContainerLowest: "#FFFFFF", // Pure White
+  surfaceContainerLow: "#FBF2EB", // Warm Off-White +
+  surfaceContainer: "#F5EDE4", // Warm Off-White ++
+  surfaceContainerHigh: "#F0E7DD", // Warm Off-White +++
+  surfaceContainerHighest: "#EAE1D7", // Warm Off-White ++++
 };
 
 const MD3DarkTheme = {
-  primary: "#B1D18A",
-  surfaceTint: "#B1D18A",
-  onPrimary: "#1F3701",
-  primaryContainer: "#354E16",
-  onPrimaryContainer: "#CDEDA3",
-  secondary: "#BFCBAD",
-  onSecondary: "#2A331E",
-  secondaryContainer: "#404A33",
-  onSecondaryContainer: "#DCE7C8",
-  tertiary: "#A0D0CB",
-  onTertiary: "#003735",
-  tertiaryContainer: "#1F4E4B",
-  onTertiaryContainer: "#BCECE7",
-  error: "#FFB4AB",
-  onError: "#690005",
-  errorContainer: "#93000A",
-  onErrorContainer: "#FFDAD6", // Corrected: Typical Tone 90 for Error 30 container
-  background: "#12140E",
-  onBackground: "#E2E3D8",
-  surface: "#12140E",
-  onSurface: "#E2E3D8",
-  surfaceVariant: "#44483D",
-  onSurfaceVariant: "#C5C8BA",
-  outline: "#8F9285",
-  outlineVariant: "#44483D",
+  primary: "#FFB776", // Light Orange (Orange80)
+  onPrimary: "#652B00", // Dark Orange (Orange20)
+  primaryContainer: "#B34D00", // Medium Dark Orange (Orange30)
+  onPrimaryContainer: "#FFDDB7", // Light Orange (Orange90)
+  secondary: "#FFB4A9", // Light Red (Red80)
+  onSecondary: "#680003", // Dark Red (Red20)
+  secondaryContainer: "#930006", // Medium Dark Red (Red30)
+  onSecondaryContainer: "#FFDAD6", // Light Red (Red90)
+  tertiary: "#EAC248", // Gold (Yellow80)
+  onTertiary: "#3E2E00", // Dark Gold (Yellow20)
+  tertiaryContainer: "#584400", // Medium Dark Gold (Yellow30)
+  onTertiaryContainer: "#FFDF90", // Light Gold (Yellow90)
+
+  error: "#F2B8B5",
+  onError: "#601410",
+  errorContainer: "#8C1D18",
+  onErrorContainer: "#F9DEDC",
+
+  background: "#1F1C1A", // Very Dark Warm Gray (Neutral10)
+  onBackground: "#EAE1D7", // Light Warm Gray (Neutral90)
+  surface: "#1F1C1A", // Very Dark Warm Gray
+  onSurface: "#EAE1D7", // Light Warm Gray
+  surfaceVariant: "#4D4539", // Warm Dark Gray (NeutralVariant30)
+  onSurfaceVariant: "#D3C4B4", // Warm Light Gray (NeutralVariant80)
+  surfaceTint: "#FFB776", // Same as primary
+
+  outline: "#9C8E80", // Warm Medium Gray (NeutralVariant60)
+  outlineVariant: "#4D4539", // Warm Dark Gray (NeutralVariant30)
+
   shadow: "#000000",
   scrim: "#000000",
-  inverseSurface: "#E2E3D8",
-  inverseOnSurface: "#1A1C16", // Corrected: Typical Tone 20 for Neutral 90 inverse surface
-  inversePrimary: "#4C662B",
-  primaryFixed: "#CDEDA3",
-  onPrimaryFixed: "#102000",
-  primaryFixedDim: "#B1D18A",
-  onPrimaryFixedVariant: "#354E16",
-  secondaryFixed: "#DCE7C8",
-  onSecondaryFixed: "#151E0B",
-  secondaryFixedDim: "#BFCBAD",
-  onSecondaryFixedVariant: "#404A33",
-  tertiaryFixed: "#BCECE7",
-  onTertiaryFixed: "#00201E",
-  tertiaryFixedDim: "#A0D0CB",
-  onTertiaryFixedVariant: "#1F4E4B",
-  surfaceDim: "#12140E",
-  surfaceBright: "#383A32",
-  surfaceContainerLowest: "#0C0F09",
-  surfaceContainerLow: "#1A1C16",
-  surfaceContainer: "#1E201A",
-  surfaceContainerHigh: "#282B24",
-  surfaceContainerHighest: "#33362E",
-};
 
-/**
- * Note on "Corrected" values:
- * The Material Theme Builder export you provided for `schemes.light.onPrimaryContainer` ("#354E16")
- * and `schemes.light.onErrorContainer` ("#93000A")
- * and `schemes.dark.onErrorContainer` ("#FFDAD6")
- * and `schemes.dark.inverseOnSurface` ("#2F312A")
- * are kept here as per your JSON output if you prefer to use the exact generator output.
- *
- * However, standard MD3 generation from tonal palettes often yields slightly different "on" colors
- * for high-contrast text on container colors. For example, if light `primaryContainer` is Tone 90,
- * `onPrimaryContainer` is usually Tone 10.
- *
- * If you want to use the exact values from your JSON "schemes" section:
- * For MD3LightTheme:
- * onPrimaryContainer: "#354E16", (from your JSON)
- * onErrorContainer: "#93000A", (from your JSON)
- * For MD3DarkTheme:
- * onErrorContainer: "#FFDAD6", (from your JSON, this one is actually typical)
- * inverseOnSurface: "#2F312A", (from your JSON)
- * background: "#12140E", (from your JSON)
- * surface: "#12140E", (from your JSON)
- *
- * I will use the **exact values from your provided JSON `schemes.light` and `schemes.dark`**
- * to directly replace your current `Colors.ts`.
- */
+  inverseSurface: "#EAE1D7", // Light Warm Gray (Neutral90)
+  inverseOnSurface: "#35302B", // Warm Dark Gray (Neutral20)
+  inversePrimary: "#F26A00", // Vibrant Orange (Orange40/50 for use on light inverse surface)
 
-const lightSchemeFromJSON = {
-  primary: "#4C662B",
-  surfaceTint: "#4C662B",
-  onPrimary: "#FFFFFF",
-  primaryContainer: "#CDEDA3",
-  onPrimaryContainer: "#354E16", // From your JSON
-  secondary: "#586249",
-  onSecondary: "#FFFFFF",
-  secondaryContainer: "#DCE7C8",
-  onSecondaryContainer: "#404A33", // From your JSON
-  tertiary: "#386663",
-  onTertiary: "#FFFFFF",
-  tertiaryContainer: "#BCECE7",
-  onTertiaryContainer: "#1F4E4B", // From your JSON
-  error: "#BA1A1A",
-  onError: "#FFFFFF",
-  errorContainer: "#FFDAD6",
-  onErrorContainer: "#93000A", // From your JSON
-  background: "#F9FAEF",
-  onBackground: "#1A1C16",
-  surface: "#F9FAEF",
-  onSurface: "#1A1C16",
-  surfaceVariant: "#E1E4D5",
-  onSurfaceVariant: "#44483D",
-  outline: "#75796C",
-  outlineVariant: "#C5C8BA",
-  shadow: "#000000",
-  scrim: "#000000",
-  inverseSurface: "#2F312A",
-  inverseOnSurface: "#F1F2E6",
-  inversePrimary: "#B1D18A",
-  primaryFixed: "#CDEDA3",
-  onPrimaryFixed: "#102000",
-  primaryFixedDim: "#B1D18A",
-  onPrimaryFixedVariant: "#354E16",
-  secondaryFixed: "#DCE7C8",
-  onSecondaryFixed: "#151E0B",
-  secondaryFixedDim: "#BFCBAD",
-  onSecondaryFixedVariant: "#404A33",
-  tertiaryFixed: "#BCECE7",
-  onTertiaryFixed: "#00201E",
-  tertiaryFixedDim: "#A0D0CB",
-  onTertiaryFixedVariant: "#1F4E4B",
-  surfaceDim: "#DADBD0",
-  surfaceBright: "#F9FAEF",
-  surfaceContainerLowest: "#FFFFFF",
-  surfaceContainerLow: "#F3F4E9",
-  surfaceContainer: "#EEEFE3",
-  surfaceContainerHigh: "#E8E9DE",
-  surfaceContainerHighest: "#E2E3D8"
-};
+  primaryFixed: "#FFDDB7",
+  onPrimaryFixed: "#4E1E00",
+  primaryFixedDim: "#FFB776",
+  onPrimaryFixedVariant: "#B34D00",
 
-const darkSchemeFromJSON = {
-  primary: "#B1D18A",
-  surfaceTint: "#B1D18A",
-  onPrimary: "#1F3701",
-  primaryContainer: "#354E16",
-  onPrimaryContainer: "#CDEDA3",
-  secondary: "#BFCBAD",
-  onSecondary: "#2A331E",
-  secondaryContainer: "#404A33",
-  onSecondaryContainer: "#DCE7C8",
-  tertiary: "#A0D0CB",
-  onTertiary: "#003735",
-  tertiaryContainer: "#1F4E4B",
-  onTertiaryContainer: "#BCECE7",
-  error: "#FFB4AB",
-  onError: "#690005",
-  errorContainer: "#93000A",
-  onErrorContainer: "#FFDAD6",
-  background: "#12140E",
-  onBackground: "#E2E3D8",
-  surface: "#12140E",
-  onSurface: "#E2E3D8",
-  surfaceVariant: "#44483D",
-  onSurfaceVariant: "#C5C8BA",
-  outline: "#8F9285",
-  outlineVariant: "#44483D",
-  shadow: "#000000",
-  scrim: "#000000",
-  inverseSurface: "#E2E3D8",
-  inverseOnSurface: "#2F312A",
-  inversePrimary: "#4C662B",
-  primaryFixed: "#CDEDA3",
-  onPrimaryFixed: "#102000",
-  primaryFixedDim: "#B1D18A",
-  onPrimaryFixedVariant: "#354E16",
-  secondaryFixed: "#DCE7C8",
-  onSecondaryFixed: "#151E0B",
-  secondaryFixedDim: "#BFCBAD",
-  onSecondaryFixedVariant: "#404A33",
-  tertiaryFixed: "#BCECE7",
-  onTertiaryFixed: "#00201E",
-  tertiaryFixedDim: "#A0D0CB",
-  onTertiaryFixedVariant: "#1F4E4B",
-  surfaceDim: "#12140E",
-  surfaceBright: "#383A32",
-  surfaceContainerLowest: "#0C0F09",
-  surfaceContainerLow: "#1A1C16",
-  surfaceContainer: "#1E201A",
-  surfaceContainerHigh: "#282B24",
-  surfaceContainerHighest: "#33362E"
+  secondaryFixed: "#FFDAD6",
+  onSecondaryFixed: "#410002",
+  secondaryFixedDim: "#FFB4A9",
+  onSecondaryFixedVariant: "#930006",
+
+  tertiaryFixed: "#FFDF90",
+  onTertiaryFixed: "#241A00",
+  tertiaryFixedDim: "#EAC248",
+  onTertiaryFixedVariant: "#584400",
+
+  surfaceDim: "#161310", // Darker warm neutral
+  surfaceBright: "#3B3732", // Brighter dark warm neutral
+  surfaceContainerLowest: "#13100E", // Darkest Warm Neutral
+  surfaceContainerLow: "#1F1C1A", // Dark Warm Neutral + (Same as background)
+  surfaceContainer: "#23201D", // Dark Warm Neutral ++
+  surfaceContainerHigh: "#2D2A27", // Dark Warm Neutral +++
+  surfaceContainerHighest: "#383531", // Dark Warm Neutral ++++
 };
 
 // These will be the direct replacements for your old Colors.light and Colors.dark
 const MappedLightTheme = {
-  ...lightSchemeFromJSON,
-  // Map old roles for some backward compatibility during transition
-  text: lightSchemeFromJSON.onSurface,       // Primary text color
-  background: lightSchemeFromJSON.background, // Primary background
-  tint: lightSchemeFromJSON.primary,        // Main accent color
-  icon: lightSchemeFromJSON.onSurfaceVariant,// For less prominent icons
-  tabIconDefault: lightSchemeFromJSON.onSurfaceVariant,
-  tabIconSelected: lightSchemeFromJSON.primary,
+  ...MD3LightTheme,
+  text: MD3LightTheme.onBackground,
+  background: MD3LightTheme.background,
+  tint: MD3LightTheme.primary,
+  icon: MD3LightTheme.onSurfaceVariant,
+  tabIconDefault: MD3LightTheme.onSurfaceVariant,
+  tabIconSelected: MD3LightTheme.primary,
 };
 
 const MappedDarkTheme = {
-  ...darkSchemeFromJSON,
-  // Map old roles for some backward compatibility during transition
-  text: darkSchemeFromJSON.onSurface,         // Primary text color
-  background: darkSchemeFromJSON.background,   // Primary background
-  tint: darkSchemeFromJSON.primary,          // Main accent color
-  icon: darkSchemeFromJSON.onSurfaceVariant,  // For less prominent icons
-  tabIconDefault: darkSchemeFromJSON.onSurfaceVariant,
-  tabIconSelected: darkSchemeFromJSON.primary,
+  ...MD3DarkTheme,
+  text: MD3DarkTheme.onBackground,
+  background: MD3DarkTheme.background,
+  tint: MD3DarkTheme.primary,
+  icon: MD3DarkTheme.onSurfaceVariant,
+  tabIconDefault: MD3DarkTheme.onSurfaceVariant,
+  tabIconSelected: MD3DarkTheme.primary,
 };
 
 export const Colors = {
@@ -271,5 +156,5 @@ export const Colors = {
 };
 
 // You can also export the pure MD3 schemes if needed elsewhere:
-export const PureMD3LightTheme = lightSchemeFromJSON;
-export const PureMD3DarkTheme = darkSchemeFromJSON;
+export const PureMD3LightTheme = MD3LightTheme;
+export const PureMD3DarkTheme = MD3DarkTheme;
