@@ -1,3 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
+
 // Represents a predefined routine action within a Task
 export interface RoutineActionDefinition {
   id: string;
@@ -16,6 +18,15 @@ export interface Action {
   notes?: string;
   immediateResult?: string;
 }
+
+export interface ActionItem {
+  id: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  doneCount: number;
+  iconColor: string;
+  backgroundColor: string;
+};
 
 // Represents a Task to solve a Problem
 export interface Task {

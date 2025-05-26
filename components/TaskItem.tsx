@@ -1,64 +1,147 @@
-// TaskItem.tsx
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+// components/TaskItems.tsx
+import React, { useMemo, useCallback } from 'react';
+import { Text, View, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import type { Problem, Task } from '@/types'; // 경로 확인 및 수정 필요
+import { useAppTheme, type AppTheme } from '../contexts/AppThemeProvider'; // 경로 확인 및 수정 필요
 
-import type { AppTheme } from '@/contexts/AppThemeProvider'; // Adjusted path based on your example
-import type { Task } from '@/types'; // Adjusted path based on your example
-
-// Extended Task Type: iconName is kept, dueDateText is removed.
+// MockTask 타입을 여기서 export 하여 index.tsx에서 사용합니다.
 export interface MockTask extends Task {
-    iconName: keyof typeof Ionicons.glyphMap;
-    // dueDateText: string; // Removed as tasks do not have due dates
+    dueDateText: string;
 }
 
-interface TaskItemProps {
+// --- TaskCard (내부 컴포넌트) ---
+interface TaskCardProps {
     task: MockTask;
-    theme: AppTheme;
 }
 
-const getTaskItemStyles = (theme: AppTheme) => StyleSheet.create({
-    taskItemContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 10,
-    },
-    taskIcon: {
-        marginRight: 12,
-    },
-    taskTextContainer: {
-        flex: 1,
-    },
-    taskName: {
-        fontSize: 16,
-        color: theme.onSurface,
-    },
-    // taskDueDate style is no longer needed as dueDateText is removed.
-    // taskDueDate: {
-    //   fontSize: 12,
-    //   color: theme.onSurfaceVariant,
-    //   marginTop: 2,
-    // },
-});
+const taskCardStyles = (theme: AppTheme) =>
+    StyleSheet.create({
+        taskCard: {
+            backgroundColor: theme.surfaceContainer,
+            borderRadius: 12,
+            paddingVertical: 15,
+            paddingHorizontal: 20,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.outlineVariant,
+        },
+        taskInfo: {
+            flex: 1,
+        },
+        taskTitle: {
+            fontSize: 16,
+            fontWeight: '500',
+            color: theme.onSurface,
+            marginBottom: 3,
+        },
+        taskDueDate: {
+            fontSize: 13,
+            color: theme.onSurfaceVariant,
+        },
+        chevronContainer: {
+            paddingLeft: 16,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+    });
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, theme }) => {
-    const styles = useMemo(() => getTaskItemStyles(theme), [theme]);
+const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
+    const theme = useAppTheme();
+    const styles = useMemo(() => taskCardStyles(theme), [theme]);
 
-    const handlePress = () => {
-        // Ensure problemId is available on the task object if needed for navigation
-        router.push({ pathname: '/actions', params: { taskId: task.id, problemId: task.problemId } });
+    const handleNavigateToActions = () => {
+        router.push({
+            pathname: '/actions', // actions 스크린 경로 확인 및 수정 필요
+            params: { taskId: task.id, problemId: task.problemId },
+        });
     };
 
     return (
-        <TouchableOpacity style={styles.taskItemContainer} onPress={handlePress}>
-            <Ionicons name={task.iconName} size={22} color={theme.primary} style={styles.taskIcon} />
-            <View style={styles.taskTextContainer}>
-                <Text style={styles.taskName}>{task.name}</Text>
+        <TouchableOpacity style={styles.taskCard} onPress={handleNavigateToActions}>
+            <View style={styles.taskInfo}>
+                <Text style={styles.taskTitle}>{task.name}</Text>
+                <Text style={styles.taskDueDate}>{task.dueDateText}</Text>
             </View>
-            <Ionicons name="chevron-forward-outline" size={22} color={theme.onSurfaceVariant} />
+            <View style={styles.chevronContainer}>
+                <Ionicons
+                    name="chevron-forward-outline"
+                    size={24}
+                    color={theme.onSurfaceVariant}
+                />
+            </View>
         </TouchableOpacity>
     );
 };
+// --- End TaskCard ---
 
-export default TaskItem;
+
+// --- TaskItems (메인 컴포넌트) ---
+interface TaskItemsProps {
+    tasks: MockTask[];
+    selectedProblem: Problem | undefined;
+}
+
+const getTaskListStyles = (theme: AppTheme) =>
+    StyleSheet.create({
+        container: {
+            flex: 1, // 리스트가 확장될 수 있도록 flex: 1 추가
+        },
+        tasksHeader: {
+            fontSize: 18,
+            fontWeight: '600',
+            color: theme.onSurfaceVariant,
+            paddingHorizontal: 20,
+            marginTop: 20,
+            marginBottom: 10,
+        },
+        taskList: {
+            flex: 1,
+        },
+        taskListContent: {
+            paddingHorizontal: 20,
+            paddingBottom: 20,
+        },
+        emptyListText: {
+            textAlign: 'center',
+            marginTop: 50,
+            fontSize: 16,
+            color: theme.onSurfaceVariant,
+        },
+    });
+
+export const TaskItems: React.FC<TaskItemsProps> = ({ tasks, selectedProblem }) => {
+    const theme = useAppTheme();
+    const styles = useMemo(() => getTaskListStyles(theme), [theme]);
+
+    const renderTaskCard = useCallback(
+        ({ item }: { item: MockTask }) => <TaskCard task={item} />, // 내부 TaskCard 사용
+        []
+    );
+
+    return (
+        <View style={styles.container}>
+            {selectedProblem && (
+                <Text style={styles.tasksHeader}>
+                    Tasks for {selectedProblem.name}
+                </Text>
+            )}
+            <FlatList
+                data={tasks}
+                renderItem={renderTaskCard}
+                keyExtractor={(item) => item.id}
+                style={styles.taskList}
+                contentContainerStyle={styles.taskListContent}
+                ListEmptyComponent={
+                    <Text style={styles.emptyListText}>
+                        No tasks for this problem yet.
+                    </Text>
+                }
+            />
+        </View>
+    );
+};
