@@ -3,8 +3,8 @@ import React, { useMemo, useCallback } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import type { Problem, Task } from '@/types'; // 경로 확인 및 수정 필요
-import { useAppTheme, type AppTheme } from '../contexts/AppThemeProvider'; // 경로 확인 및 수정 필요
+import type { Problem, Task } from '@/types';
+import { useAppTheme, type AppTheme } from '../contexts/AppThemeProvider';
 
 // MockTask 타입을 여기서 export 하여 index.tsx에서 사용합니다.
 export interface MockTask extends Task {

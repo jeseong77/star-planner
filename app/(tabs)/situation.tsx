@@ -15,7 +15,6 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ProblemItem from '../../components/ProblemItem';
-import TaskItem from '../../components/TaskItem';
 import type { MockTask } from '../../components/TaskItem';
 
 import AddProblemBottomSheet from '@/components/AddProblemBottomSheet';
@@ -102,7 +101,9 @@ export default function Situation() {
       .map(t => { // t is now correctly typed as Task
         const taskForDisplay: MockTask = {
           ...t,
-          iconName: (t as any).iconName || 'list-outline',
+          dueDateText: t.completionDate
+            ? new Date(t.completionDate).toLocaleDateString()
+            : 'No due date',
         };
         return taskForDisplay;
       });
@@ -240,7 +241,7 @@ export default function Situation() {
               <Text style={styles.emptyStateTextSmall}>Set a description first to add problems.</Text>
             )}
           </View>
-          {problemsToRender.length === 0 && situation?.description ? (
+          {problemsToRender.length === 0 ? (
             <Text style={styles.emptyStateText}>No problems defined yet. Tap "Add Problem" to get started.</Text>
           ) : null}
           {problemsToRender.map(problem => {
@@ -288,7 +289,6 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
     paddingVertical: 15,
     backgroundColor: theme.surface,
     marginTop: 12,
-    marginHorizontal: 10,
     borderRadius: Platform.OS === 'ios' ? 12 : 8,
   },
   sectionHeader: {

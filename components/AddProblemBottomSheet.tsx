@@ -1,40 +1,38 @@
-import React, { useMemo, useState, useCallback } from 'react';
-import {
-    StyleSheet,
-    Text,
-    View,
-    TouchableOpacity,
-    TextInput,
-    Platform,
-    KeyboardAvoidingView,
-    Dimensions, // To get screen height for max sheet height
-} from 'react-native';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    useDerivedValue,
-    withDelay,
-    withTiming,
-    interpolate,
-    Extrapolation,
-} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+    Dimensions,
+    Keyboard,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import Animated, {
+    Easing,
+    Extrapolation,
+    interpolate,
+    useAnimatedStyle,
+    useDerivedValue,
+    useSharedValue,
+    withTiming,
+} from 'react-native-reanimated';
 
-import { useAppStore } from '../store/appStore'; // Adjust path as needed
-import type { Problem } from '../types'; // Adjust path as needed
-import { useAppTheme, type AppTheme } from '../contexts/AppThemeProvider'; // Adjust path as needed
+import { useAppTheme, type AppTheme } from '../contexts/AppThemeProvider';
+import { useAppStore } from '../store/appStore';
+import type { Problem } from '../types';
 
 const screenHeight = Dimensions.get('window').height;
 
-// Props for the bottom sheet
 interface AddProblemBottomSheetProps {
-    isOpen: Animated.SharedValue<boolean>; // Controlled by parent
-    onClose: () => void; // Parent function to set isOpen.value = false
+    isOpen: Animated.SharedValue<boolean>;
+    onClose: () => void;
     animationDuration?: number;
 }
 
-// A simple UUID generator using expo-crypto
 const generateUUID = (): string => {
     return Crypto.randomUUID();
 };
@@ -42,14 +40,57 @@ const generateUUID = (): string => {
 const AddProblemBottomSheet: React.FC<AddProblemBottomSheetProps> = ({
     isOpen,
     onClose,
-    animationDuration = 300, // Default duration from Gorhom, reference used 500
+    animationDuration = 300,
 }) => {
     const theme = useAppTheme();
     const styles = useMemo(() => getStyles(theme), [theme]);
 
-    const sheetInternalHeight = useSharedValue(0); // Actual height of the sheet content
+    const sheetInternalHeight = useSharedValue(0);
+    const keyboardHeight = useSharedValue(0);
 
-    // Progress: 0 when fully open (translateY = 0), 1 when fully closed (translateY = sheetHeight)
+    const keyboardSpacerStyle = useAnimatedStyle(() => {
+        return {
+            height: keyboardHeight.value,
+        };
+    });
+
+    useEffect(() => {
+        const keyboardShowEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const keyboardHideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const keyboardDidShowListener = Keyboard.addListener(
+            keyboardShowEvent,
+            (event) => {
+                let eventDuration = 250;
+                if (Platform.OS === 'ios' && event.duration) {
+                    eventDuration = event.duration;
+                }
+                keyboardHeight.value = withTiming(event.endCoordinates.height, {
+                    duration: eventDuration,
+                    easing: Easing.out(Easing.ease),
+                });
+            }
+        );
+        const keyboardDidHideListener = Keyboard.addListener(
+            keyboardHideEvent,
+            (event) => {
+                let eventDuration = 250;
+                if (Platform.OS === 'ios' && event?.duration) {
+                    eventDuration = event.duration;
+                }
+                keyboardHeight.value = withTiming(0, {
+                    duration: eventDuration,
+                    easing: Easing.out(Easing.ease),
+                });
+            }
+        );
+
+        return () => {
+            keyboardDidShowListener.remove();
+            keyboardDidHideListener.remove();
+        };
+    }, [keyboardHeight]);
+
     const progress = useDerivedValue(() => {
         return withTiming(isOpen.value ? 0 : 1, { duration: animationDuration });
     }, [isOpen, animationDuration]);
@@ -57,41 +98,37 @@ const AddProblemBottomSheet: React.FC<AddProblemBottomSheetProps> = ({
     const animatedSheetStyle = useAnimatedStyle(() => {
         const translateY = interpolate(
             progress.value,
-            [0, 1], // Input range (0: open, 1: closed)
-            [0, sheetInternalHeight.value || screenHeight * 0.5], // Output range for translateY
+            [0, 1],
+            [0, sheetInternalHeight.value || screenHeight * 0.5],
             Extrapolation.CLAMP
         );
         return {
             transform: [{ translateY }],
-            // Control visibility to prevent interaction when off-screen
             opacity: isOpen.value || progress.value < 1 ? 1 : 0,
         };
     });
 
     const animatedBackdropStyle = useAnimatedStyle(() => {
         return {
-            opacity: interpolate(progress.value, [0, 1], [1, 0], Extrapolation.CLAMP), // Fades in when open, out when closed
-            // zIndex handling: only active when open or opening
-            // pointerEvents are more reliable for disabling interaction
+            opacity: interpolate(progress.value, [0, 1], [1, 0], Extrapolation.CLAMP),
             pointerEvents: isOpen.value ? 'auto' : 'none',
         };
     });
 
     const [problemName, setProblemName] = useState('');
     const [error, setError] = useState('');
-
     const addProblemToSituation = useAppStore((state) => state.addProblemToSituation);
 
     const handleInternalClose = useCallback(() => {
-        // Clear form state before calling parent's onClose
         setProblemName('');
         setError('');
-        onClose(); // This function should set isOpen.value = false in the parent
+        onClose();
     }, [onClose]);
 
     const handleAddProblem = useCallback(async () => {
         if (!problemName.trim()) {
             setError('Problem name cannot be empty.');
+            // Keyboard does NOT dismiss here, as per requirement
             return;
         }
         setError('');
@@ -102,78 +139,66 @@ const AddProblemBottomSheet: React.FC<AddProblemBottomSheetProps> = ({
             isResolved: false,
             createdAt: new Date().toISOString(),
             taskIds: [],
-            // iconName: 'help-circle-outline', // Example: provide a default or add an icon picker
         };
 
         try {
             await addProblemToSituation(newProblem);
-            handleInternalClose(); // Close and clear form
+            Keyboard.dismiss(); // <--- ADDED: Dismiss keyboard on successful add
+            handleInternalClose();
         } catch (e) {
             console.error("Failed to add problem:", e);
             setError('Failed to save problem. Please try again.');
+            // Keyboard does NOT dismiss here, allowing user to retry
         }
     }, [problemName, addProblemToSituation, handleInternalClose]);
 
-    // Render nothing if sheet height is not measured yet, to prevent flicker
-    // or ensure the initial transform pushes it off-screen correctly.
-    // The opacity check in animatedSheetStyle also helps.
-
     return (
         <>
-            {/* Backdrop */}
             <Animated.View style={[styles.backdrop, animatedBackdropStyle]}>
                 <TouchableOpacity
-                    style={StyleSheet.absoluteFill} // Make backdrop touchable
+                    style={StyleSheet.absoluteFill}
                     onPress={handleInternalClose}
-                    activeOpacity={1} // To ensure the backdrop itself doesn't have visual feedback
+                    activeOpacity={1}
                 />
             </Animated.View>
 
-            {/* Sheet Content */}
             <Animated.View
                 style={[styles.sheetContainer, animatedSheetStyle, { backgroundColor: theme.surfaceContainerLow }]}
                 onLayout={(event) => {
                     const { height } = event.nativeEvent.layout;
-                    // Update sheet height only if it has changed significantly,
-                    // or if it's the initial measurement.
                     if (Math.abs(sheetInternalHeight.value - height) > 1 || sheetInternalHeight.value === 0) {
                         sheetInternalHeight.value = height;
                     }
                 }}
             >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={styles.keyboardAvoidingView}
-                    keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0} // Adjust if needed
-                >
-                    <View style={styles.contentContainer}>
-                        <View style={styles.headerContainer}>
-                            <Text style={styles.title}>Add New Problem</Text>
-                            <TouchableOpacity onPress={handleInternalClose} style={styles.closeButton}>
-                                <Ionicons name="close-circle-outline" size={28} color={theme.onSurfaceVariant} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter problem name (e.g., Improve Health)"
-                            value={problemName}
-                            onChangeText={(text) => {
-                                setProblemName(text);
-                                if (error) setError(''); // Clear error on type
-                            }}
-                            placeholderTextColor={theme.onSurfaceVariant}
-                            selectionColor={theme.primary}
-                            autoFocus={false} // AutoFocus can sometimes be tricky with custom bottom sheets
-                        />
-                        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-                        <TouchableOpacity style={styles.saveButton} onPress={handleAddProblem}>
-                            <Ionicons name="add-circle-outline" size={20} color={theme.onPrimary} style={styles.saveButtonIcon} />
-                            <Text style={styles.saveButtonText}>Add Problem</Text>
+                <View style={styles.contentContainer}>
+                    <View style={styles.headerContainer}>
+                        <Text style={styles.title}>Add New Problem</Text>
+                        <TouchableOpacity onPress={handleInternalClose} style={styles.closeButton}>
+                            <Ionicons name="close-circle-outline" size={28} color={theme.onSurfaceVariant} />
                         </TouchableOpacity>
                     </View>
-                </KeyboardAvoidingView>
+
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Enter problem name (e.g., Improve Health)"
+                        value={problemName}
+                        onChangeText={(text) => {
+                            setProblemName(text);
+                            if (error) setError('');
+                        }}
+                        placeholderTextColor={theme.onSurfaceVariant}
+                        selectionColor={theme.primary}
+                        autoFocus={false}
+                    />
+                    {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+                    <TouchableOpacity style={styles.saveButton} onPress={handleAddProblem}>
+                        <Ionicons name="add-circle-outline" size={20} color={theme.onPrimary} style={styles.saveButtonIcon} />
+                        <Text style={styles.saveButtonText}>Add Problem</Text>
+                    </TouchableOpacity>
+                    <Animated.View style={keyboardSpacerStyle} />
+                </View>
             </Animated.View>
         </>
     );
@@ -182,8 +207,8 @@ const AddProblemBottomSheet: React.FC<AddProblemBottomSheetProps> = ({
 const getStyles = (theme: AppTheme) => StyleSheet.create({
     backdrop: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)', // Semi-transparent backdrop
-        zIndex: 1, // Ensure backdrop is above other screen content but below sheet
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        zIndex: 1,
     },
     sheetContainer: {
         position: 'absolute',
@@ -193,18 +218,14 @@ const getStyles = (theme: AppTheme) => StyleSheet.create({
         width: '100%',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        zIndex: 2, // Sheet is above backdrop
-        // Height will be determined by content, up to a maxHeight
-        maxHeight: screenHeight * 0.9, // Example: Max 90% of screen height
-        overflow: 'hidden', // Ensure content respects border radius
-    },
-    keyboardAvoidingView: {
-        width: '100%',
+        zIndex: 2,
+        maxHeight: screenHeight * 0.9,
+        overflow: 'hidden',
     },
     contentContainer: {
         paddingHorizontal: 20,
         paddingTop: 20,
-        paddingBottom: Platform.OS === 'ios' ? 30 : 20, // Extra padding for home indicator or just spacing
+        paddingBottom: Platform.OS === 'ios' ? 30 : 20,
     },
     headerContainer: {
         flexDirection: 'row',
@@ -234,7 +255,7 @@ const getStyles = (theme: AppTheme) => StyleSheet.create({
         color: theme.error,
         fontSize: 14,
         marginBottom: 15,
-        textAlign: 'left', // Changed from center
+        textAlign: 'left',
     },
     saveButton: {
         backgroundColor: theme.primary,
