@@ -8,19 +8,17 @@ import type {
   Task,
 } from "../types"; // Assuming your types are in ../types
 
-// Import your database initialization and CRUD functions
-// You will need to create these in your db.ts file for expo-sqlite
 import {
   addActionToDB,
   addProblemToDB,
   addResultToDB,
   addTaskToDB,
   deleteProblemFromDB,
-  deleteTaskFromDB, // This should handle cascades in SQL or its own logic
-  getActionsFromDB, // Example: for description and lastModified
+  deleteTaskFromDB,
+  getActionsFromDB,
   getProblemsFromDB,
   getResultsFromDB,
-  getSituationFromDB, // This should handle cascades in SQL or its own logic
+  getSituationFromDB,
   getTasksFromDB,
   initDB,
   updateProblemInDB,
@@ -35,50 +33,35 @@ export interface AppState {
   actions: Record<string, Action>;
   results: Record<string, Result>;
 
-  // --- Hydration ---
-  hydrateFromDB: () => Promise<void>; // Renamed from hydrateFromStorage
+  hydrateFromDB: () => Promise<void>;
 
   // --- Situation Actions ---
   setSituationDescription: (description: string) => Promise<void>;
-  addProblemToSituation: (problem: Problem) => Promise<void>;
+  // addProblemToSituation is effectively replaced by addProblem,
+  // as problems implicitly belong to the single situation.
+  addProblem: (problemName: string) => Promise<Problem | null>; // Simplified: takes name, returns new Problem
 
   // --- Problem Actions ---
-  // addProblem: (problem: Problem) => Promise<void>; // Covered by addProblemToSituation
-  updateProblem: (
-    problemId: string,
-    updates: Partial<Problem>
-  ) => Promise<void>;
+  updateProblem: (problemId: string, updates: Partial<Omit<Problem, 'id' | 'createdAt' | 'taskIds'>>) => Promise<void>;
   deleteProblem: (problemId: string) => Promise<void>;
-  addTaskToProblem: (problemId: string, task: Task) => Promise<void>;
+  addTaskToProblem: (problemId: string, taskName: string) => Promise<Task | null>; // Simplified
 
   // --- Task Actions ---
-  // addTask: (task: Task) => Promise<void>; // Covered by addTaskToProblem
-  updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
+  updateTask: (taskId: string, updates: Partial<Omit<Task, 'id' | 'createdAt' | 'problemId' | 'actionIds' | 'routineActions'>>) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
-  addRoutineActionToTask: (
-    taskId: string,
-    routineActionDef: RoutineActionDefinition
-  ) => Promise<void>;
-  logRoutineAction: (
-    taskId: string,
-    routineActionDefId: string
-  ) => Promise<void>;
+  addRoutineActionToTaskDefinition: (taskId: string, routineActionDefName: string) => Promise<void>; // Renamed & simplified
+  logRoutineActionExecution: (taskId: string, routineActionDefId: string) => Promise<void>; // Renamed for clarity
 
   // --- Action Actions ---
-  logSpecificAction: (action: Action) => Promise<void>;
+  logSpecificAction: (taskId: string, actionDetails: Partial<Omit<Action, 'id' | 'taskId' | 'timestamp'>>) => Promise<void>; // Simplified
 
   // --- Result Actions ---
-  addResult: (result: Result) => Promise<void>;
+  addResult: (result: Omit<Result, 'id' | 'createdAt'>) => Promise<void>;
 }
 
-// Helper for unique IDs (ensure you have a proper implementation for native)
-// For Expo native, consider using 'expo-crypto': import * as Crypto from 'expo-crypto';
 const generateId = (): string =>
-  global.crypto && global.crypto.randomUUID
-    ? global.crypto.randomUUID()
-    : Math.random().toString(36).slice(2, 11); // Fallback, not truly UUID
+  global.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2, 11);
 
-// Helper to convert array from DB to record for store
 const arrayToRecord = <T extends { id: string }>(arr: T[]): Record<string, T> =>
   arr.reduce((acc, item) => {
     acc[item.id] = item;
@@ -86,55 +69,68 @@ const arrayToRecord = <T extends { id: string }>(arr: T[]): Record<string, T> =>
   }, {} as Record<string, T>);
 
 export const useAppStore = create<AppState>((set, get) => ({
-  situation: null, // Will be populated by hydrateFromDB
+  situation: null,
   problems: {},
   tasks: {},
   actions: {},
   results: {},
 
-  // --- Hydration ---
   hydrateFromDB: async () => {
     try {
       await initDB();
 
-      const [dbSituation, dbProblems, dbTasks, dbActions, dbResults] =
+      const [dbSituation, rawDbProblems, rawDbTasks, rawDbActions, dbResults] =
         await Promise.all([
-          getSituationFromDB(), // This should fetch the single 'current-situation'
-          getProblemsFromDB(),
-          getTasksFromDB(),
+          getSituationFromDB(),
+          getProblemsFromDB(), // Returns Problem[] with taskIds: []
+          getTasksFromDB(),    // Returns Task[] with actionIds: []
           getActionsFromDB(),
           getResultsFromDB(),
         ]);
 
       let currentSituation = dbSituation;
       if (!currentSituation) {
-        // Create a default situation in DB if it doesn't exist
         currentSituation = {
-          id: "current-situation",
-          problemIds: [], // Will be populated as problems are added
+          id: "current-situation", // Fixed ID for the single situation
           lastModified: new Date().toISOString(),
           description: "",
+          // No problemIds here, as per type change
         };
-        await updateSituationInDB(currentSituation); // Use an upsert-like function or add then update
+        await updateSituationInDB(currentSituation);
       }
+
+      // Convert arrays to records for easier lookup
+      const problemsMap: Record<string, Problem> = arrayToRecord(rawDbProblems);
+      const tasksMap: Record<string, Task> = arrayToRecord(rawDbTasks);
+      const actionsMap: Record<string, Action> = arrayToRecord(rawDbActions);
+
+      // Populate taskIds in problemsMap
+      Object.values(tasksMap).forEach(task => {
+        if (problemsMap[task.problemId]) {
+          problemsMap[task.problemId].taskIds.push(task.id);
+        }
+      });
+
+      // Populate actionIds in tasksMap
+      Object.values(actionsMap).forEach(action => {
+        if (tasksMap[action.taskId]) {
+          tasksMap[action.taskId].actionIds.push(action.id);
+        }
+      });
 
       set({
         situation: currentSituation,
-        problems: arrayToRecord(dbProblems),
-        tasks: arrayToRecord(dbTasks),
-        actions: arrayToRecord(dbActions),
+        problems: problemsMap,
+        tasks: tasksMap,
+        actions: actionsMap,
         results: arrayToRecord(dbResults),
       });
       console.log("STAR Planner: Store hydrated from SQLite.");
     } catch (error) {
-      console.error(
-        "STAR Planner: Failed to hydrate store from SQLite.",
-        error
-      );
+      console.error("STAR Planner: Failed to hydrate store from SQLite.", error);
     }
   },
 
-  // --- Situation Actions Implementation ---
   setSituationDescription: async (description) => {
     const currentSituation = get().situation;
     if (!currentSituation) {
@@ -154,42 +150,57 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  addProblemToSituation: async (problem) => {
-    const currentSituation = get().situation;
-    if (!currentSituation) {
-      console.error("Situation not loaded for addProblemToSituation");
-      return;
-    }
-    const updatedSituation: Situation = {
-      ...currentSituation,
-      problemIds: [...currentSituation.problemIds, problem.id],
-      lastModified: new Date().toISOString(),
+  addProblem: async (problemName) => {
+    const newProblem: Problem = {
+      id: generateId(),
+      name: problemName,
+      isResolved: false,
+      createdAt: new Date().toISOString(),
+      taskIds: [], // Initialize with empty taskIds
     };
-    try {
-      // Persist problem first, then the updated situation linking to it
-      await addProblemToDB(problem);
-      await updateSituationInDB(updatedSituation); // Assumes updateSituationInDB updates problemIds too
 
-      set((state) => ({
-        situation: updatedSituation,
-        problems: { ...state.problems, [problem.id]: problem },
-      }));
+    try {
+      await addProblemToDB(newProblem);
+      // No direct modification to situation.problemIds
+      // Optionally, update situation's lastModified if desired
+      const currentSituation = get().situation;
+      if (currentSituation) {
+        const updatedSit: Situation = { ...currentSituation, lastModified: new Date().toISOString() };
+        await updateSituationInDB(updatedSit);
+        set(state => ({
+          problems: { ...state.problems, [newProblem.id]: newProblem },
+          situation: updatedSit
+        }));
+      } else {
+        set(state => ({
+          problems: { ...state.problems, [newProblem.id]: newProblem },
+        }));
+      }
+      return newProblem;
     } catch (error) {
-      console.error("Failed to add problem to situation in DB:", error);
+      console.error("Failed to add problem to DB:", error);
+      return null;
     }
   },
 
-  // --- Problem Actions Implementation ---
   updateProblem: async (problemId, updates) => {
     const currentProblem = get().problems[problemId];
     if (!currentProblem) {
       console.error(`Problem ${problemId} not found for update.`);
       return;
     }
-    const updatedProblem: Problem = { ...currentProblem, ...updates };
+    // Ensure taskIds and other managed fields are not overwritten by partial updates
+    const updatedProblem: Problem = {
+      ...currentProblem,
+      ...updates,
+      // resolutionDate and finalOutcome can be nullified if updates includes them as undefined
+      resolutionDate: 'resolutionDate' in updates ? updates.resolutionDate : currentProblem.resolutionDate,
+      finalOutcome: 'finalOutcome' in updates ? updates.finalOutcome : currentProblem.finalOutcome,
+    };
+
     try {
-      await updateProblemInDB(updatedProblem);
-      set((state) => ({
+      await updateProblemInDB(updatedProblem); // DB function only updates certain fields
+      set(state => ({
         problems: { ...state.problems, [problemId]: updatedProblem },
       }));
     } catch (error) {
@@ -197,8 +208,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  deleteProblem: async (problemId: string) => {
-    // Get the state of the problem (especially its taskIds) *before* any store modification
+  deleteProblem: async (problemId) => {
     const problemToDelete = get().problems[problemId];
     if (!problemToDelete) {
       console.error(`Problem ${problemId} not found for deletion.`);
@@ -206,105 +216,105 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     try {
-      // 1. Attempt to delete the problem and its related data from the SQLite database.
-      // It's assumed that `deleteProblemFromDB` triggers `ON DELETE CASCADE` in SQLite,
-      // which would automatically delete related tasks, their actions, and related results.
-      await deleteProblemFromDB(problemId);
+      await deleteProblemFromDB(problemId); // DB handles cascading deletes for tasks/actions/results
 
-      // 2. If DB deletion is successful, update the Zustand state to mirror these changes.
-      set((state) => {
-        // Create new copies of state slices to modify
+      set(state => {
         const newProblems = { ...state.problems };
-        const newTasks = { ...state.tasks };
-        const newActions = { ...state.actions };
-        const newResults = { ...state.results };
-
-        // a. Remove the problem itself
         delete newProblems[problemId];
 
-        // b. Remove tasks associated with the deleted problem.
-        //    `problemToDelete.taskIds` (captured before this `set` call) accurately lists these tasks.
-        problemToDelete.taskIds.forEach((taskId) => {
-          const task = state.tasks[taskId]; // Get the task from the current state snapshot
-          if (task) {
-            // c. Remove actions associated with each deleted task.
-            //    `task.actionIds` (from the current state snapshot) lists these actions.
-            task.actionIds.forEach((actionId) => {
-              delete newActions[actionId];
-            });
-            // Now remove the task itself from the newTasks object
-            delete newTasks[taskId];
+        // Remove associated tasks from store state
+        const newTasks = { ...state.tasks };
+        const tasksToRemove = Object.values(state.tasks).filter(t => t.problemId === problemId);
+        const newActions = { ...state.actions };
+
+        tasksToRemove.forEach(task => {
+          // Remove actions associated with each task being removed
+          (task.actionIds || []).forEach(actionId => {
+            delete newActions[actionId];
+          });
+          delete newTasks[task.id];
+        });
+
+        // Remove associated results from store state
+        const newResults = { ...state.results };
+        Object.values(state.results).forEach(result => {
+          if (result.problemId === problemId) {
+            delete newResults[result.id];
           }
         });
 
-        // d. Remove results directly associated with the deleted problem.
-        Object.keys(state.results).forEach((resultId) => {
-          if (state.results[resultId].problemId === problemId) {
-            delete newResults[resultId];
-          }
-        });
-
-        // e.Update the situation to remove the problemId
-        const newSituation = state.situation
-          ? {
-              ...state.situation,
-              problemIds: state.situation.problemIds.filter(
-                (id) => id !== problemId
-              ),
-              lastModified: new Date().toISOString(),
-            }
-          : null;
+        // Optionally update situation's lastModified
+        let newSituation = state.situation;
+        if (newSituation) {
+          newSituation = { ...newSituation, lastModified: new Date().toISOString() };
+        }
 
         return {
           problems: newProblems,
-          situation: newSituation,
           tasks: newTasks,
           actions: newActions,
           results: newResults,
+          situation: newSituation // Reflect lastModified change if any
         };
       });
       console.log(`Problem ${problemId} and related data deleted from store.`);
     } catch (error) {
       console.error(`Failed to delete problem ${problemId} from DB:`, error);
-      // Optionally, you might want to add logic here to handle cases where DB deletion fails
-      // (e.g., notify the user, attempt a rollback of any optimistic UI changes if you had them).
     }
   },
 
-  addTaskToProblem: async (problemId, task) => {
+  addTaskToProblem: async (problemId, taskName) => {
     const currentProblem = get().problems[problemId];
     if (!currentProblem) {
       console.error(`Problem ${problemId} not found for addTaskToProblem.`);
-      return;
+      return null;
     }
-    const updatedProblem: Problem = {
-      ...currentProblem,
-      taskIds: [...currentProblem.taskIds, task.id],
+    const newTask: Task = {
+      id: generateId(),
+      problemId: problemId,
+      name: taskName,
+      isCompleted: false,
+      createdAt: new Date().toISOString(),
+      actionIds: [],
+      routineActions: [],
     };
-    try {
-      await addTaskToDB(task); // Add task to its own table
-      await updateProblemInDB(updatedProblem); // Update problem with new taskId
 
-      set((state) => ({
+    try {
+      await addTaskToDB(newTask);
+      const updatedProblem: Problem = {
+        ...currentProblem,
+        taskIds: [...currentProblem.taskIds, newTask.id],
+      };
+      // updateProblemInDB does not save taskIds, which is intended.
+      // This change to problem.taskIds is in-memory for the store.
+      await updateProblemInDB(updatedProblem);
+
+
+      set(state => ({
         problems: { ...state.problems, [problemId]: updatedProblem },
-        tasks: { ...state.tasks, [task.id]: task },
+        tasks: { ...state.tasks, [newTask.id]: newTask },
       }));
+      return newTask;
     } catch (error) {
       console.error(`Failed to add task to problem ${problemId} in DB:`, error);
+      return null;
     }
   },
 
-  // --- Task Actions Implementation ---
   updateTask: async (taskId, updates) => {
     const currentTask = get().tasks[taskId];
     if (!currentTask) {
       console.error(`Task ${taskId} not found for update.`);
       return;
     }
-    const updatedTask: Task = { ...currentTask, ...updates };
+    const updatedTask: Task = {
+      ...currentTask, ...updates,
+      completionDate: 'completionDate' in updates ? updates.completionDate : currentTask.completionDate,
+    };
+
     try {
-      await updateTaskInDB(updatedTask);
-      set((state) => ({
+      await updateTaskInDB(updatedTask); // DB does not update actionIds, only core fields + routineActions
+      set(state => ({
         tasks: { ...state.tasks, [taskId]: updatedTask },
       }));
     } catch (error) {
@@ -319,35 +329,30 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     try {
-      // deleteTaskFromDB should handle deleting associated actions in SQLite
-      await deleteTaskFromDB(taskId);
+      await deleteTaskFromDB(taskId); // DB handles cascading deletes for actions
 
-      set((state) => {
+      set(state => {
         const newTasks = { ...state.tasks };
         delete newTasks[taskId];
 
         const problem = state.problems[taskToDelete.problemId];
-        const newProblems = { ...state.problems };
+        let newProblems = state.problems;
         if (problem) {
-          newProblems[taskToDelete.problemId] = {
+          const updatedProblem = {
             ...problem,
-            taskIds: problem.taskIds.filter((id) => id !== taskId),
+            taskIds: problem.taskIds.filter(id => id !== taskId),
           };
-          // Persist change to problem's taskIds in DB if not handled by deleteTaskFromDB's transaction
-          updateProblemInDB(newProblems[taskToDelete.problemId]).catch(
-            console.error
-          );
+          newProblems = { ...state.problems, [taskToDelete.problemId]: updatedProblem };
+          // updateProblemInDB(updatedProblem).catch(console.error); // Persist problem (optional, taskIds not saved by DB func)
         }
 
         const newActions = { ...state.actions };
-        taskToDelete.actionIds.forEach(
-          (actionId) => delete newActions[actionId]
-        );
+        (taskToDelete.actionIds || []).forEach(actionId => delete newActions[actionId]);
 
         return {
           tasks: newTasks,
           problems: newProblems,
-          actions: newActions, // actions for this task removed
+          actions: newActions,
         };
       });
     } catch (error) {
@@ -355,140 +360,120 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  addRoutineActionToTask: async (taskId, routineActionDef) => {
+  addRoutineActionToTaskDefinition: async (taskId, routineActionDefName) => {
     const task = get().tasks[taskId];
     if (!task) {
-      console.error(`Task ${taskId} not found for addRoutineActionToTask.`);
+      console.error(`Task ${taskId} not found for addRoutineActionToTaskDefinition.`);
       return;
     }
+    const newRoutineActionDef: RoutineActionDefinition = {
+      id: generateId(),
+      name: routineActionDefName,
+      loggedCount: 0,
+    };
     const updatedTask: Task = {
       ...task,
-      routineActions: [...task.routineActions, routineActionDef],
+      routineActions: [...task.routineActions, newRoutineActionDef],
     };
     try {
-      // updateTaskInDB should handle saving the routineActions (e.g., as JSON string)
-      await updateTaskInDB(updatedTask);
-      set({
-        tasks: { ...get().tasks, [taskId]: updatedTask },
-      });
+      await updateTaskInDB(updatedTask); // updateTaskInDB saves routineActions as JSON
+      set(state => ({
+        tasks: { ...state.tasks, [taskId]: updatedTask },
+      }));
     } catch (error) {
-      console.error(
-        `Failed to add routine action to task ${taskId} in DB:`,
-        error
-      );
+      console.error(`Failed to add routine action definition to task ${taskId} in DB:`, error);
     }
   },
 
-  logRoutineAction: async (taskId, routineActionDefId) => {
+  logRoutineActionExecution: async (taskId, routineActionDefId) => {
     const state = get();
     const task = state.tasks[taskId];
     if (!task) {
       console.error(`Task with id ${taskId} not found`);
       return;
     }
-    const routineActionDef = task.routineActions.find(
-      (ra) => ra.id === routineActionDefId
-    );
+    const routineActionDef = task.routineActions.find(ra => ra.id === routineActionDefId);
     if (!routineActionDef) {
-      console.error(
-        `Routine action definition with id ${routineActionDefId} not found in task ${taskId}`
-      );
+      console.error(`Routine action definition with id ${routineActionDefId} not found in task ${taskId}`);
       return;
     }
 
-    const newLoggedCount = routineActionDef.loggedCount + 1;
-    const newActionId = generateId();
-    const newActionLog: Action = {
-      id: newActionId,
+    const newAction: Action = {
+      id: generateId(),
       taskId,
       timestamp: new Date().toISOString(),
       isRoutineLog: true,
       routineActionDefId,
+      description: `Logged: ${routineActionDef.name}`, // Auto-generate description
     };
 
     const updatedTask: Task = {
       ...task,
-      routineActions: task.routineActions.map((ra) =>
-        ra.id === routineActionDefId
-          ? { ...ra, loggedCount: newLoggedCount }
-          : ra
+      routineActions: task.routineActions.map(ra =>
+        ra.id === routineActionDefId ? { ...ra, loggedCount: ra.loggedCount + 1 } : ra
       ),
-      actionIds: [...task.actionIds, newActionId],
+      actionIds: [...task.actionIds, newAction.id],
     };
 
     try {
-      await addActionToDB(newActionLog);
-      // updateTaskInDB should handle saving the updated routineActions and actionIds
-      await updateTaskInDB(updatedTask);
+      await addActionToDB(newAction);
+      await updateTaskInDB(updatedTask); // Saves updated routineActions and potentially other task fields (but not actionIds)
 
-      set({
-        tasks: { ...state.tasks, [taskId]: updatedTask },
-        actions: { ...state.actions, [newActionId]: newActionLog },
-      });
-    } catch (error) {
-      console.error(
-        `Failed to log routine action for task ${taskId} in DB:`,
-        error
-      );
-    }
-  },
-
-  // --- Action Actions Implementation ---
-  logSpecificAction: async (action) => {
-    const task = get().tasks[action.taskId];
-    if (!task) {
-      console.error(
-        `Task with id ${action.taskId} not found for specific action`
-      );
-      return;
-    }
-    const updatedTask: Task = {
-      ...task,
-      actionIds: [...task.actionIds, action.id],
-    };
-    try {
-      await addActionToDB(action);
-      // updateTaskInDB should handle saving the updated actionIds
-      await updateTaskInDB(updatedTask);
-
-      set((state) => ({
-        tasks: { ...state.tasks, [action.taskId]: updatedTask },
-        actions: { ...state.actions, [action.id]: action },
+      set(currentState => ({ // Use functional update for safety
+        tasks: { ...currentState.tasks, [taskId]: updatedTask },
+        actions: { ...currentState.actions, [newAction.id]: newAction },
       }));
     } catch (error) {
-      console.error(
-        `Failed to log specific action for task ${action.taskId} in DB:`,
-        error
-      );
+      console.error(`Failed to log routine action for task ${taskId} in DB:`, error);
     }
   },
 
-  // --- Result Actions Implementation ---
-  addResult: async (result) => {
+  logSpecificAction: async (taskId, actionDetails) => {
+    const task = get().tasks[taskId];
+    if (!task) {
+      console.error(`Task with id ${taskId} not found for specific action`);
+      return;
+    }
+    const newAction: Action = {
+      id: generateId(),
+      taskId,
+      timestamp: new Date().toISOString(),
+      isRoutineLog: false,
+      ...actionDetails, // Spread other details like description, notes, etc.
+    };
+    const updatedTask: Task = {
+      ...task,
+      actionIds: [...task.actionIds, newAction.id],
+    };
+
     try {
-      await addResultToDB(result);
-      set((state) => ({
-        results: { ...state.results, [result.id]: result },
+      await addActionToDB(newAction);
+      // updateTaskInDB doesn't save actionIds, this is an in-store update for actionIds
+      // No need to call updateTaskInDB just for actionIds change if no other task fields change.
+      // If other task fields *were* to change here, then call it.
+
+      set(state => ({
+        tasks: { ...state.tasks, [taskId]: updatedTask },
+        actions: { ...state.actions, [newAction.id]: newAction },
+      }));
+    } catch (error) {
+      console.error(`Failed to log specific action for task ${taskId} in DB:`, error);
+    }
+  },
+
+  addResult: async (resultData) => {
+    const newResult: Result = {
+      id: generateId(),
+      createdAt: new Date().toISOString(),
+      ...resultData,
+    };
+    try {
+      await addResultToDB(newResult);
+      set(state => ({
+        results: { ...state.results, [newResult.id]: newResult },
       }));
     } catch (error) {
       console.error("Failed to add result to DB:", error);
     }
   },
 }));
-
-// To use in your App.tsx or main entry point:
-// import { useEffect } from 'react';
-// import { useAppStore } from './path/to/appStore';
-//
-// const App = () => {
-//   useEffect(() => {
-//     const unsubscribe = useAppStore.subscribe(
-//       (state) => console.log('State changed:', state), // Optional: log state changes
-//       (state) => state // Selector for what part of state to observe, or omit for all
-//     );
-//     useAppStore.getState().hydrateFromDB(); // Initialize and hydrate
-//     return unsubscribe; // Cleanup subscription on unmount
-//   }, []);
-//
-//   // ... rest of your app
-// };

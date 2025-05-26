@@ -32,7 +32,6 @@ import { getScreenStyles } from '@/styles/actionsStyles';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-/** 애니메이션을 위한 Spring 설정 */
 const springConfig = {
     damping: 18,
     stiffness: 200,
@@ -89,16 +88,13 @@ export default function ActionsScreen() {
 
     return (
         <SafeAreaView style={screenStyles.safeArea}>
-            {/* Expo Router 스택 스크린 설정 */}
             <Stack.Screen
                 options={{
                     headerShown: true,
                     header: () => (<CustomHeader onSelectTab={setSelectedTab} selectedTab={selectedTab} />),
                 }}
             />
-            {/* 메인 컨텐츠 영역 */}
             <View style={screenStyles.contentContainer}>
-                {/* 루틴 액션 탭 */}
                 <Animated.View style={[screenStyles.pageContainer, routineAnimatedStyle]}>
                     <RoutineTab
                         actions={currentActionsData}
@@ -108,13 +104,11 @@ export default function ActionsScreen() {
                     />
                 </Animated.View>
 
-                {/* 로그 액션 탭 */}
                 <Animated.View style={[screenStyles.pageContainer, logAnimatedStyle]}>
                     <LogTab styles={screenStyles} />
                 </Animated.View>
             </View>
 
-            {/* 루틴 추가 모달 */}
             <AddRoutineModal
                 isVisible={isAddRoutineModalVisible}
                 onClose={handleCloseModal}

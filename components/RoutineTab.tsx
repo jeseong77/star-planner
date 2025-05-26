@@ -8,18 +8,18 @@ import { ActionCard } from '@/components/ActionCard';
 
 // Types
 import { ActionItem } from '@/types/actionTypes';
-import { AppTheme } from '@/contexts/AppThemeProvider'; // 테마 타입 임포트
+import { AppTheme } from '@/contexts/AppThemeProvider';
 
 interface RoutineTabProps {
     actions: ActionItem[];
-    styles: { // 필요한 스타일만 명시하거나 any로 처리할 수 있습니다.
+    styles: {
         routineSection: ViewStyle;
         listStyle: ViewStyle;
         listContentStyle: ViewStyle;
         addButton: ViewStyle;
         addButtonText: TextStyle;
     };
-    theme: AppTheme; // 테마 객체 전달
+    theme: AppTheme;
     onAddPress: () => void;
 }
 

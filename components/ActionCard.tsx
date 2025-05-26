@@ -10,10 +10,9 @@ type ActionCardProps = {
     action: ActionItem;
 };
 
-/** 개별 액션 아이템을 표시하는 카드 컴포넌트 */
 export const ActionCard = ({ action }: ActionCardProps) => {
     const theme = useAppTheme();
-    const [doneCount, setDoneCount] = useState(action.doneCount); // 상태를 내부에서 관리 (필요시 prop으로 받을 수도 있음)
+    const [doneCount, setDoneCount] = useState(action.doneCount);
     const cardStyles = useMemo(() => getActionCardStyles(theme), [theme]);
 
     const handleIncrement = () => setDoneCount(prev => prev + 1);
@@ -40,7 +39,6 @@ export const ActionCard = ({ action }: ActionCardProps) => {
     );
 };
 
-/** ActionCard 컴포넌트의 스타일을 생성하는 함수 */
 const getActionCardStyles = (theme: AppTheme) => StyleSheet.create({
     routineCard: {
         backgroundColor: theme.surfaceContainer,
@@ -49,8 +47,8 @@ const getActionCardStyles = (theme: AppTheme) => StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 16,
-        elevation: 1, // Optional shadow for Android
-        shadowColor: '#000', // Optional shadow for iOS
+        elevation: 1,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,

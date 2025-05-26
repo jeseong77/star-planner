@@ -1,4 +1,4 @@
-// src/components/AddRoutineActionForm.tsx (or your path)
+// src/components/AddRoutineActionForm.tsx
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     View,
@@ -20,7 +20,7 @@ import Animated, {
     Easing,
 } from 'react-native-reanimated';
 
-import { useAppTheme, type AppTheme } from '@/contexts/AppThemeProvider'; // Adjust path
+import { useAppTheme, type AppTheme } from '@/contexts/AppThemeProvider';
 
 const ALL_IONICON_NAMES = Object.keys(Ionicons.glyphMap)
     .filter(name => name.includes('-outline') || (!name.includes('sharp') && !name.includes('logo-')))
@@ -42,13 +42,12 @@ export interface RoutineActionData {
     color: string;
 }
 
-interface AddRoutineActionViewProps { // Renamed from AddRoutineActionModalProps
-    // visible prop is no longer needed here if parent controls rendering
+interface AddRoutineActionViewProps {
     onClose: () => void;
     onSave: (data: RoutineActionData) => void;
 }
 
-export default function AddRoutineActionView({ // Renamed from AddRoutineActionModal
+export default function AddRoutineActionView({
     onClose,
     onSave,
 }: AddRoutineActionViewProps) {
@@ -60,12 +59,6 @@ export default function AddRoutineActionView({ // Renamed from AddRoutineActionM
     const [selectedColor, setSelectedColor] = useState<string>(THEME_CHOICE_COLORS[0]);
 
     const animatedBackgroundColor = useSharedValue(THEME_CHOICE_COLORS[0]);
-
-    // Effect to reset form when it's about to be shown (e.g. parent sets it visible)
-    // This can be triggered by a prop change if parent passes a 'resetKey' or similar,
-    // or parent calls a reset method via ref. For simplicity, we'll reset on save/close.
-    // And parent ensures it's re-mounted or state is fresh.
-    // A simple way is to reset when selectedIcon/Color changes back to default AFTER an interaction.
 
     useEffect(() => {
         // Always keep animated background in sync with selectedColor
@@ -85,10 +78,9 @@ export default function AddRoutineActionView({ // Renamed from AddRoutineActionM
         setSelectedIcon(null);
         const initialColor = THEME_CHOICE_COLORS[0];
         setSelectedColor(initialColor);
-        animatedBackgroundColor.value = initialColor; // Instantly set for next use
+        animatedBackgroundColor.value = initialColor;
     };
 
-    // Call resetForm when the component mounts to ensure it's fresh if it was hidden and state persisted
     useEffect(() => {
         resetForm();
     }, []);
@@ -104,13 +96,11 @@ export default function AddRoutineActionView({ // Renamed from AddRoutineActionM
     };
 
     const handleClosePress = () => {
-        resetForm(); // Reset before closing
+        resetForm();
         onClose();
     };
 
     return (
-        // This Pressable is the main container for the form card.
-        // e.stopPropagation() prevents clicks inside from propagating to parent overlay.
         <Pressable style={styles.formCard} onPress={(e) => e.stopPropagation()}>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={styles.formTitle}>Add New Routine Action</Text>

@@ -5,34 +5,25 @@ import type {
   Task,
   Action,
   Result,
-  RoutineActionDefinition, // Part of Task type
+  // RoutineActionDefinition is part of Task type and handled via JSON
 } from "../types"; // Adjust path
 
 const DATABASE_NAME = "StarPlanner.db";
 
 // --- Database Instance ---
-// Use the modern asynchronous API to open the database.
-// This returns a promise that resolves to the database object.
 let _dbInstance: SQLite.SQLiteDatabase | null = null;
 
 const getDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
   if (_dbInstance !== null) {
     return _dbInstance;
   }
-  // The new API directly returns the db instance from openDatabaseAsync
   _dbInstance = await SQLite.openDatabaseAsync(DATABASE_NAME);
   return _dbInstance;
 };
 
 // --- Database Initialization and Schema Setup ---
-/**
- * Initializes the database, creating tables if they don't exist.
- * Uses PRAGMA foreign_keys=ON and PRAGMA journal_mode=WAL.
- */
-const initDB = async (): Promise<void> => {
+export const initDB = async (): Promise<void> => {
   const db = await getDatabase();
-  // Use execAsync for batch DDL and PRAGMA statements
-  // Note: execAsync does not support parameterized queries.
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
@@ -40,7 +31,7 @@ const initDB = async (): Promise<void> => {
     CREATE TABLE IF NOT EXISTS situation (
       id TEXT PRIMARY KEY NOT NULL,
       description TEXT,
-      lastModified TEXT NOT NULL
+      lastModified TEXT NOT NULL -- Removed problemIds column, fixed comma
     );
 
     CREATE TABLE IF NOT EXISTS problems (
@@ -50,6 +41,7 @@ const initDB = async (): Promise<void> => {
       resolutionDate TEXT,
       finalOutcome TEXT,
       createdAt TEXT NOT NULL
+      -- taskIds is not a column here; managed in app state
     );
 
     CREATE TABLE IF NOT EXISTS tasks (
@@ -60,6 +52,7 @@ const initDB = async (): Promise<void> => {
       completionDate TEXT,
       createdAt TEXT NOT NULL,
       routineActions TEXT, -- Store as JSON string: RoutineActionDefinition[]
+      -- actionIds is not a column here; managed in app state
       FOREIGN KEY (problemId) REFERENCES problems(id) ON DELETE CASCADE
     );
 
@@ -90,65 +83,82 @@ const initDB = async (): Promise<void> => {
   console.log("Database initialized successfully (SQLite - Modern API)");
 };
 
-// --- Helper Type for Raw Rows (booleans as numbers) ---
-// This helps with type safety when fetching and before converting to app types
+// --- Helper Type for Raw Rows ---
+// These helpers map closely to what's fetched before conversion to richer app types.
+
+// For Situation, the row directly maps to the simplified Situation type
+// No separate SituationRow needed if types.ts Situation has no problemIds
+
 interface ProblemRow extends Omit<Problem, "isResolved" | "taskIds"> {
-  isResolved: number; // 0 or 1
-  // taskIds is not stored directly in this table
+  isResolved: number;
+  // taskIds is intentionally omitted as it's not a direct DB column
 }
 interface TaskRow
   extends Omit<Task, "isCompleted" | "routineActions" | "actionIds"> {
-  isCompleted: number; // 0 or 1
-  routineActions: string; // JSON string
-  // actionIds are derived
+  isCompleted: number;
+  routineActions: string | null; // routineActions stored as JSON string or null
+  // actionIds is intentionally omitted
 }
 interface ActionRow extends Omit<Action, "isRoutineLog"> {
-  isRoutineLog: number; // 0 or 1
+  isRoutineLog: number;
 }
 
 // --- CRUD Service Functions ---
 
 // SITUATION
+/**
+ * Fetches the single Situation object.
+ * The Situation type in types.ts no longer has problemIds.
+ */
 export const getSituationFromDB = async (): Promise<Situation | null> => {
   const db = await getDatabase();
-  // Assuming 'current-situation' is the ID for the single situation
-  const row = await db.getFirstAsync<Situation>( // Assuming Situation type matches row structure here
+  // The Situation type from types.ts now matches this structure directly
+  const row = await db.getFirstAsync<Situation>(
     "SELECT * FROM situation WHERE id = ? LIMIT 1;",
     ["current-situation"]
   );
-  // If problemIds are stored as JSON string in situation table (not recommended):
-  // return row ? { ...row, problemIds: row.problemIds ? JSON.parse(row.problemIds) : [] } : null;
-  // For now, assume problemIds are dynamic and handled by appStore based on actual problems.
-  return row ? { ...row, problemIds: [] } : null;
+  // Ensure description is undefined if null, to match optional '?' in type
+  return row ? { ...row, description: row.description ?? undefined } : null;
 };
 
+/**
+ * Updates or creates the single Situation object.
+ * The Situation object passed in should not have problemIds, as per the types.ts update.
+ */
 export const updateSituationInDB = async (
-  situation: Situation
+  situation: Situation // This Situation type no longer has problemIds
 ): Promise<SQLite.SQLiteRunResult> => {
   const db = await getDatabase();
-  // Using INSERT OR REPLACE to handle both creation and update (upsert)
   return db.runAsync(
     "INSERT OR REPLACE INTO situation (id, description, lastModified) VALUES (?, ?, ?);",
-    [situation.id, situation.description || null, situation.lastModified]
+    [
+      situation.id,
+      situation.description || null, // Store null if description is undefined/empty string
+      situation.lastModified,
+    ]
   );
 };
 
 // PROBLEMS
+/**
+ * Fetches all problems.
+ * taskIds will be initialized as an empty array, to be populated by app logic if needed.
+ */
 export const getProblemsFromDB = async (): Promise<Problem[]> => {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<ProblemRow>(
-    "SELECT * FROM problems ORDER BY createdAt DESC;"
-  );
-  return rows.map((row) => ({
+  const rows = await db.getAllAsync<ProblemRow>("SELECT * FROM problems ORDER BY createdAt DESC;");
+  return rows.map(row => ({
     ...row,
     isResolved: !!row.isResolved,
-    taskIds: [], // taskIds should be populated by querying tasks table or managed in app state
+    taskIds: [], // Initialize taskIds as empty; appStore will manage actual task associations
   }));
 };
 
-export const addProblemToDB = async (
-  problem: Problem
-): Promise<SQLite.SQLiteRunResult> => {
+/**
+ * Adds a new problem.
+ * The Problem object's taskIds field is not saved to this table.
+ */
+export const addProblemToDB = async (problem: Problem): Promise<SQLite.SQLiteRunResult> => {
   const db = await getDatabase();
   return db.runAsync(
     "INSERT INTO problems (id, name, isResolved, resolutionDate, finalOutcome, createdAt) VALUES (?, ?, ?, ?, ?, ?);",
@@ -163,9 +173,11 @@ export const addProblemToDB = async (
   );
 };
 
-export const updateProblemInDB = async (
-  problem: Problem
-): Promise<SQLite.SQLiteRunResult> => {
+/**
+ * Updates an existing problem.
+ * The Problem object's taskIds field is not updated in this table.
+ */
+export const updateProblemInDB = async (problem: Problem): Promise<SQLite.SQLiteRunResult> => {
   const db = await getDatabase();
   return db.runAsync(
     "UPDATE problems SET name = ?, isResolved = ?, resolutionDate = ?, finalOutcome = ? WHERE id = ?;",
@@ -179,38 +191,39 @@ export const updateProblemInDB = async (
   );
 };
 
-export const deleteProblemFromDB = async (
-  problemId: string
-): Promise<SQLite.SQLiteRunResult> => {
+export const deleteProblemFromDB = async (problemId: string): Promise<SQLite.SQLiteRunResult> => {
   const db = await getDatabase();
-  // ON DELETE CASCADE in schema should handle deleting related tasks, actions, and results.
-  // If not, you'd use db.withTransactionAsync here to delete from multiple tables.
   return db.runAsync("DELETE FROM problems WHERE id = ?;", [problemId]);
 };
 
 // TASKS
+/**
+ * Fetches all tasks.
+ * actionIds will be initialized as an empty array.
+ * routineActions are parsed from JSON.
+ */
 export const getTasksFromDB = async (): Promise<Task[]> => {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<TaskRow>(
-    "SELECT * FROM tasks ORDER BY createdAt DESC;"
-  );
-  return rows.map((row) => ({
+  const rows = await db.getAllAsync<TaskRow>("SELECT * FROM tasks ORDER BY createdAt DESC;");
+  return rows.map(row => ({
     ...row,
     isCompleted: !!row.isCompleted,
     routineActions: row.routineActions ? JSON.parse(row.routineActions) : [],
-    actionIds: [], // actionIds are derived by querying actions table
+    actionIds: [], // Initialize actionIds as empty; appStore will manage actual action associations
   }));
 };
-// Get tasks for a specific problem
-export const getTasksForProblemFromDB = async (
-  problemId: string
-): Promise<Task[]> => {
+
+/**
+ * Fetches tasks for a specific problem.
+ * actionIds will be initialized as an empty array.
+ */
+export const getTasksForProblemFromDB = async (problemId: string): Promise<Task[]> => {
   const db = await getDatabase();
   const rows = await db.getAllAsync<TaskRow>(
     "SELECT * FROM tasks WHERE problemId = ? ORDER BY createdAt ASC;",
     [problemId]
   );
-  return rows.map((row) => ({
+  return rows.map(row => ({
     ...row,
     isCompleted: !!row.isCompleted,
     routineActions: row.routineActions ? JSON.parse(row.routineActions) : [],
@@ -218,9 +231,12 @@ export const getTasksForProblemFromDB = async (
   }));
 };
 
-export const addTaskToDB = async (
-  task: Task
-): Promise<SQLite.SQLiteRunResult> => {
+/**
+ * Adds a new task.
+ * The Task object's actionIds field is not saved to this table.
+ * routineActions are stringified to JSON.
+ */
+export const addTaskToDB = async (task: Task): Promise<SQLite.SQLiteRunResult> => {
   const db = await getDatabase();
   return db.runAsync(
     "INSERT INTO tasks (id, problemId, name, isCompleted, completionDate, createdAt, routineActions) VALUES (?, ?, ?, ?, ?, ?, ?);",
@@ -236,9 +252,12 @@ export const addTaskToDB = async (
   );
 };
 
-export const updateTaskInDB = async (
-  task: Task
-): Promise<SQLite.SQLiteRunResult> => {
+/**
+ * Updates an existing task.
+ * The Task object's actionIds field is not updated in this table.
+ * routineActions are stringified to JSON.
+ */
+export const updateTaskInDB = async (task: Task): Promise<SQLite.SQLiteRunResult> => {
   const db = await getDatabase();
   return db.runAsync(
     "UPDATE tasks SET name = ?, isCompleted = ?, completionDate = ?, routineActions = ? WHERE id = ?;",
@@ -252,43 +271,40 @@ export const updateTaskInDB = async (
   );
 };
 
-export const deleteTaskFromDB = async (
-  taskId: string
-): Promise<SQLite.SQLiteRunResult> => {
+export const deleteTaskFromDB = async (taskId: string): Promise<SQLite.SQLiteRunResult> => {
   const db = await getDatabase();
-  // ON DELETE CASCADE should handle deleting actions linked to this task
   return db.runAsync("DELETE FROM tasks WHERE id = ?;", [taskId]);
 };
 
 // ACTIONS
+/**
+ * Fetches all actions.
+ */
 export const getActionsFromDB = async (): Promise<Action[]> => {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<ActionRow>(
-    "SELECT * FROM actions ORDER BY timestamp DESC;"
-  );
-  return rows.map((row) => ({
+  const rows = await db.getAllAsync<ActionRow>("SELECT * FROM actions ORDER BY timestamp DESC;");
+  return rows.map(row => ({
     ...row,
     isRoutineLog: !!row.isRoutineLog,
   }));
 };
-// Get actions for a specific task
-export const getActionsForTaskFromDB = async (
-  taskId: string
-): Promise<Action[]> => {
+
+/**
+ * Fetches actions for a specific task.
+ */
+export const getActionsForTaskFromDB = async (taskId: string): Promise<Action[]> => {
   const db = await getDatabase();
   const rows = await db.getAllAsync<ActionRow>(
     "SELECT * FROM actions WHERE taskId = ? ORDER BY timestamp ASC;",
     [taskId]
   );
-  return rows.map((row) => ({
+  return rows.map(row => ({
     ...row,
     isRoutineLog: !!row.isRoutineLog,
   }));
 };
 
-export const addActionToDB = async (
-  action: Action
-): Promise<SQLite.SQLiteRunResult> => {
+export const addActionToDB = async (action: Action): Promise<SQLite.SQLiteRunResult> => {
   const db = await getDatabase();
   return db.runAsync(
     "INSERT INTO actions (id, taskId, timestamp, description, isRoutineLog, routineActionDefId, notes, immediateResult) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
@@ -305,18 +321,13 @@ export const addActionToDB = async (
   );
 };
 
-// RESULTS
+// RESULTS (Assuming Result type does not contain child ID arrays that need special handling here)
 export const getResultsFromDB = async (): Promise<Result[]> => {
   const db = await getDatabase();
-  // The generic type <Result> assumes the row structure matches the Result type.
-  return db.getAllAsync<Result>(
-    "SELECT * FROM results ORDER BY dateAchieved DESC;"
-  );
+  return db.getAllAsync<Result>("SELECT * FROM results ORDER BY dateAchieved DESC;");
 };
 
-export const addResultToDB = async (
-  result: Result
-): Promise<SQLite.SQLiteRunResult> => {
+export const addResultToDB = async (result: Result): Promise<SQLite.SQLiteRunResult> => {
   const db = await getDatabase();
   return db.runAsync(
     "INSERT INTO results (id, problemId, description, dateAchieved, notes, sourceType, sourceId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
@@ -332,7 +343,3 @@ export const addResultToDB = async (
     ]
   );
 };
-
-// Export the initDB function and your CRUD functions
-export { initDB };
-// Other exports are already handled by `export const ...`

@@ -15,30 +15,57 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ProblemItem from '../../components/ProblemItem';
-// import type { MockTask } from '../../components/TaskItem'; // Removed MockTask import
-
-import AddProblemBottomSheet from '@/components/AddProblemBottomSheet';
+import AddProblemBottomSheet from '@/components/AddProblemBottomSheet'; // Ensure this component is updated to use the new `addProblem` store action
 import { useAppStore } from '@/store/appStore';
 import { useAppTheme, type AppTheme } from '../../contexts/AppThemeProvider';
-import type { Problem, Task } from '../../types'; // Task is already imported
+import type { Problem, Task } from '../../types';
 
-export default function Situation() {
+export default function SituationScreen() { // Renamed component for clarity, ensure file name matches if it was 'Situation.tsx'
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => getStyles(theme, insets.bottom), [theme, insets.bottom]);
 
+  // --- Zustand State and Actions ---
   const situation = useAppStore(state => state.situation);
   const storeProblems = useAppStore(state => state.problems);
   const storeTasks = useAppStore(state => state.tasks);
   const hydrateFromDB = useAppStore(state => state.hydrateFromDB);
   const setSituationDescription = useAppStore(state => state.setSituationDescription);
-  const isLoadingStore = useAppStore(state => state.situation === undefined);
+  // Corrected loading state: situation is initialized to null in the store
+  const isLoadingStore = useAppStore(state => state.situation === null);
+  const addProblem = useAppStore(state => state.addProblem); // Get the addProblem action
 
+  // --- Local Component State ---
   const [tempDescription, setTempDescription] = useState('');
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [expandedProblemIds, setExpandedProblemIds] = useState<string[]>([]);
   const isAddProblemSheetOpen = useSharedValue(false);
+  const [hasHydrationBeenCalled, setHasHydrationBeenCalled] = useState(false);
 
+
+  // --- Effects ---
+  // Call hydration once on mount
+  useEffect(() => {
+    if (!hasHydrationBeenCalled) {
+      hydrateFromDB();
+      setHasHydrationBeenCalled(true);
+    }
+  }, [hydrateFromDB, hasHydrationBeenCalled]);
+
+  // Update tempDescription when situation changes or editing stops
+  useEffect(() => {
+    const currentDescription = situation?.description || '';
+    if (situation && !isLoadingStore) { // Ensure situation is loaded
+      if (tempDescription !== currentDescription && !isEditingDescription) {
+        setTempDescription(currentDescription);
+      }
+    } else if (!isLoadingStore && tempDescription !== '') {
+      // If situation becomes null (e.g. error state, though unlikely here) and not loading, clear temp
+      // setTempDescription('');
+    }
+  }, [situation, isLoadingStore, isEditingDescription]); // Removed tempDescription from deps to avoid loop
+
+  // --- Event Handlers ---
   const handlePresentAddProblemSheet = useCallback(() => {
     isAddProblemSheetOpen.value = true;
   }, [isAddProblemSheetOpen]);
@@ -47,21 +74,6 @@ export default function Situation() {
     isAddProblemSheetOpen.value = false;
   }, [isAddProblemSheetOpen]);
 
-  useEffect(() => {
-    hydrateFromDB();
-  }, [hydrateFromDB]);
-
-  useEffect(() => {
-    const currentDescription = situation?.description || '';
-    if (situation) {
-      if (tempDescription !== currentDescription && !isEditingDescription) {
-        setTempDescription(currentDescription);
-      }
-    } else if (!isLoadingStore && tempDescription !== '') {
-      setTempDescription('');
-    }
-  }, [situation, isLoadingStore, isEditingDescription]);
-
   const handleToggleProblemExpand = (problemId: string) => {
     setExpandedProblemIds(prev =>
       prev.includes(problemId) ? prev.filter(id => id !== problemId) : [...prev, problemId]
@@ -69,6 +81,7 @@ export default function Situation() {
   };
 
   const handleSaveDescription = async () => {
+    if (!situation) return; // Should not happen if UI is enabled
     try {
       await setSituationDescription(tempDescription.slice(0, 500));
       setIsEditingDescription(false);
@@ -82,24 +95,26 @@ export default function Situation() {
     setIsEditingDescription(false);
   };
 
+  // --- Data Derivation ---
+  // Problems to render now come directly from storeProblems, as all problems belong to the single situation.
   const problemsToRender: Problem[] = useMemo(() => {
-    if (!situation || !storeProblems) return [];
-    return situation.problemIds
-      .map(id => storeProblems[id])
-      .filter((p): p is Problem => p !== undefined && p !== null);
-  }, [situation, storeProblems]);
+    if (isLoadingStore || !storeProblems) return []; // Wait for loading and ensure storeProblems exists
+    return Object.values(storeProblems).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // Convert record to array, optionally sort
+  }, [isLoadingStore, storeProblems]);
 
-  const getTasksForProblem = useCallback((problemId: string): Task[] => { // Return type changed to Task[]
+  const getTasksForProblem = useCallback((problemId: string): Task[] => {
     const problem = storeProblems[problemId];
     if (!problem || !storeTasks) return [];
 
-    return problem.taskIds
+    // problem.taskIds is still expected to be populated in the store by hydrateFromDB or relevant actions
+    return (problem.taskIds || [])
       .map(taskId => storeTasks[taskId])
       .filter((t): t is Task => t !== undefined && t !== null);
-    // Removed the .map() that converted Task to MockTask and added dueDateText
   }, [storeProblems, storeTasks]);
 
-  if (isLoadingStore) {
+
+  // --- Render Logic ---
+  if (isLoadingStore && !hasHydrationBeenCalled) { // Show loading initially until hydration is called
     return (
       <View style={[styles.screenContainer, styles.centered]}>
         <ActivityIndicator size="large" color={theme.primary} />
@@ -108,62 +123,33 @@ export default function Situation() {
     );
   }
 
-  if (!situation) {
+  // Screen for initial situation setup if description is missing
+  // This part assumes that a situation object exists after loading, even if description is empty
+  if (!situation?.description && !isEditingDescription && !isLoadingStore) {
     return (
       <View style={[styles.screenContainer, styles.centered]}>
         <Text style={[styles.descriptionText, { marginBottom: 20, textAlign: 'center' }]}>
           Welcome to STAR Planner!{'\n'}Let's define your current situation.
         </Text>
-        {!isEditingDescription && (
-          <TouchableOpacity
-            style={[styles.actionButton, styles.saveButton, { width: '90%', marginBottom: 20 }]}
-            onPress={() => {
-              setTempDescription('');
-              setIsEditingDescription(true);
-            }}>
-            <Text style={styles.saveButtonText}>Set Situation Description</Text>
-          </TouchableOpacity>
-        )}
-        {isEditingDescription && (
-          <View style={{ width: '90%', marginTop: 0 }}>
-            <Text style={[styles.sectionTitle, { marginBottom: 10, textAlign: 'center' }]}>Describe Your Situation</Text>
-            <TextInput
-              style={styles.textInput}
-              value={tempDescription}
-              onChangeText={setTempDescription}
-              multiline
-              maxLength={500}
-              autoFocus
-              placeholderTextColor={theme.onSurfaceVariant}
-              selectionColor={theme.primary}
-              placeholder="What is your current situation? What are your overarching goals?"
-            />
-            <Text style={styles.charCount}>{tempDescription.length}/500</Text>
-            <View style={styles.editActionsContainer}>
-              <TouchableOpacity style={[styles.actionButton, styles.cancelButton]} onPress={() => {
-                setIsEditingDescription(false);
-                setTempDescription('');
-              }}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSaveDescription}>
-                <Text style={styles.saveButtonText}>Save Description</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-        <Text style={[styles.descriptionText, { fontSize: 14, opacity: 0.7, textAlign: 'center' }]}>
-          After describing your situation, you can add specific problems you want to address.
-        </Text>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.saveButton, { width: '90%', marginBottom: 20 }]}
+          onPress={() => {
+            setTempDescription(situation?.description || ''); // Initialize with current or empty
+            setIsEditingDescription(true);
+          }}>
+          <Text style={styles.saveButtonText}>Set Situation Description</Text>
+        </TouchableOpacity>
+        {/* Input fields for description shown when isEditingDescription is true, handled below */}
       </View>
     );
   }
+
 
   return (
     <View style={styles.screenContainer}>
       <Stack.Screen
         options={{
-          title: 'Situation',
+          title: 'Situation', // Or a dynamic title
           headerShown: true,
           headerStyle: { backgroundColor: theme.surface },
           headerTintColor: theme.onSurface,
@@ -179,7 +165,7 @@ export default function Situation() {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Description</Text>
-            {!isEditingDescription && (
+            {!isEditingDescription && situation && ( // Ensure situation object exists
               <TouchableOpacity style={styles.editButton} onPress={() => {
                 setTempDescription(situation?.description || '');
                 setIsEditingDescription(true);
@@ -200,7 +186,7 @@ export default function Situation() {
                 autoFocus
                 placeholderTextColor={theme.onSurfaceVariant}
                 selectionColor={theme.primary}
-                placeholder="Describe your current situation and overall goals..."
+                placeholder="What is your current situation? What are your overarching goals?"
               />
               <Text style={styles.charCount}>{tempDescription.length}/500</Text>
               <View style={styles.editActionsContainer}>
@@ -219,39 +205,43 @@ export default function Situation() {
           )}
         </View>
 
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Problems</Text>
-            {situation?.description ? (
-              <TouchableOpacity style={styles.addProblemButton} onPress={handlePresentAddProblemSheet}>
-                <Ionicons name="add-circle-outline" size={22} color={theme.primary} />
-                <Text style={styles.addProblemButtonText}>Add Problem</Text>
-              </TouchableOpacity>
-            ) : (
-              <Text style={styles.emptyStateTextSmall}>Set a description first to add problems.</Text>
-            )}
+        {(situation?.description || isEditingDescription) && (
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Problems</Text>
+              {situation ? (
+                <TouchableOpacity style={styles.addProblemButton} onPress={handlePresentAddProblemSheet}>
+                  <Ionicons name="add-circle-outline" size={22} color={theme.primary} />
+                  <Text style={styles.addProblemButtonText}>Add Problem</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            {problemsToRender.length === 0 && situation?.description ? (
+              <Text style={styles.emptyStateText}>No problems defined yet. Tap "Add Problem" to get started.</Text>
+            ) : null}
+            {problemsToRender.map(problem => {
+              if (!problem) return null;
+              const relevantTasks = getTasksForProblem(problem.id);
+              return (
+                <ProblemItem
+                  key={problem.id}
+                  problem={problem}
+                  tasks={relevantTasks}
+                  isExpanded={expandedProblemIds.includes(problem.id)}
+                  onToggleExpand={() => handleToggleProblemExpand(problem.id)}
+                />
+              );
+            })}
           </View>
-          {problemsToRender.length === 0 && situation?.description ? ( // Show only if description is set
-            <Text style={styles.emptyStateText}>No problems defined yet. Tap "Add Problem" to get started.</Text>
-          ) : null}
-          {problemsToRender.map(problem => {
-            const relevantTasks = getTasksForProblem(problem.id);
-            return (
-              <ProblemItem
-                key={problem.id}
-                problem={problem}
-                tasks={relevantTasks} // This is now Task[]
-                isExpanded={expandedProblemIds.includes(problem.id)}
-                onToggleExpand={() => handleToggleProblemExpand(problem.id)}
-              />
-            );
-          })}
-        </View>
+        )}
       </ScrollView>
 
       <AddProblemBottomSheet
         isOpen={isAddProblemSheetOpen}
         onClose={handleCloseAddProblemSheet}
+      // This component will need to be updated to use:
+      // const addProblemAction = useAppStore(state => state.addProblem);
+      // and then call addProblemAction("New Problem Name")
       />
     </View>
   );
@@ -272,14 +262,14 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
     flex: 1,
   },
   scrollViewContent: {
-    paddingBottom: bottomInset + 16,
+    paddingBottom: bottomInset + 16, // For scrollable content to not be hidden by bottom bars/nav
   },
   sectionContainer: {
-    paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: theme.surface, // Changed from surfaceContainerHigh for main sections
-    marginTop: 12, // Added consistent margin for sections
-    borderRadius: Platform.OS === 'ios' ? 12 : 8, // Consistent rounding
+    paddingHorizontal: 15,
+    backgroundColor: theme.surface,
+    marginTop: 12,
+    borderRadius: Platform.OS === 'ios' ? 12 : 8,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -289,7 +279,7 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '600', // Semibold
     color: theme.onSurface,
   },
   editButton: {
@@ -297,12 +287,14 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 4,
     paddingHorizontal: 8,
+    // backgroundColor: theme.surfaceContainerLowest, // Subtle background for interactable elements
+    // borderRadius: 16,
   },
   editButtonText: {
     marginLeft: 6,
     fontSize: 14,
     color: theme.primary,
-    fontWeight: '500',
+    fontWeight: '500', // Medium
   },
   descriptionText: {
     fontSize: 16,
@@ -313,32 +305,38 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: theme.onSurface,
-    backgroundColor: theme.surfaceContainerLow, // For text input background
+    backgroundColor: theme.surfaceContainerLow,
     borderColor: theme.outline,
     borderWidth: 1,
     borderRadius: 8,
-    padding: 12,
+    paddingTop: 12, // Ensure padding is consistent
+    paddingBottom: 12,
+    paddingHorizontal: 12,
     minHeight: 100,
-    textAlignVertical: 'top', // For Android multiline
+    textAlignVertical: 'top',
   },
   charCount: {
     fontSize: 12,
     color: theme.onSurfaceVariant,
     textAlign: 'right',
     marginTop: 4,
+    paddingRight: 4,
   },
   editActionsContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 12,
-    gap: 8,
+    marginTop: 16, // Increased margin
+    gap: 10, // Standardized gap
   },
   actionButton: {
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 20,
+    paddingHorizontal: 16, // Adjusted padding
+    borderRadius: 20, // Fully rounded pill shape
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cancelButton: {
+    // No background, text color is primary
   },
   cancelButtonText: {
     color: theme.primary,
@@ -347,22 +345,17 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
   },
   saveButton: {
     backgroundColor: theme.primary,
-    paddingHorizontal: 20, // More horizontal padding for primary action
-    alignItems: 'center', // Ensure text is centered if button width is fixed
-    justifyContent: 'center',
   },
   saveButtonText: {
     color: theme.onPrimary,
     fontWeight: '500',
-    fontSize: 16, // Slightly larger for primary action text
+    fontSize: 14, // Consistent font size for button text
   },
   addProblemButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4, // Similar to edit button
+    paddingVertical: 4,
     paddingHorizontal: 8,
-    // backgroundColor: theme.surfaceContainerHighest,
-    // borderRadius: 20,
   },
   addProblemButtonText: {
     marginLeft: 6,
@@ -371,15 +364,16 @@ const getStyles = (theme: AppTheme, bottomInset: number) => StyleSheet.create({
     fontWeight: '500',
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: 15, // Slightly adjusted
     color: theme.onSurfaceVariant,
     textAlign: 'center',
-    paddingVertical: 20, // Give it some space
+    paddingVertical: 24, // Adjusted padding
+    lineHeight: 22,
   },
   emptyStateTextSmall: {
     fontSize: 14,
-    color: theme.onSurfaceVariant, // Use a slightly less prominent color or style
+    color: theme.onSurfaceVariant,
     fontStyle: 'italic',
-    // textAlign: 'right', // Example if it needs to align with a button
+    opacity: 0.8, // Make it less prominent
   },
 });
