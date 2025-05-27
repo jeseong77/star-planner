@@ -7,6 +7,7 @@ import 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import React from 'react';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
