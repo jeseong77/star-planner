@@ -16,6 +16,9 @@ import { Ionicons } from "@expo/vector-icons"; // For potential icons in ResultI
 import { useAppTheme, type AppTheme } from "../../contexts/AppThemeProvider"; // Adjust path
 import type { Result } from "../../types"; // Assuming Result type is in types.ts
 
+import StarDiary from "@/components/StarDiary";
+import { ScrollView } from "react-native-gesture-handler";
+
 // --- Mock Data ---
 const MOCK_RESULTS: Result[] = [
   {
@@ -110,7 +113,7 @@ export default function ResultScreen() {
   );
 
   return (
-    <View style={styles.screenContainer}>
+    <ScrollView style={styles.screenContainer}>
       <Stack.Screen
         options={{
           title: "Results",
@@ -120,31 +123,15 @@ export default function ResultScreen() {
           headerTitleStyle: { color: theme.onSurface, fontWeight: "600" },
         }}
       />
-      <FlatList
-        data={resultsData}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        style={styles.list}
-        contentContainerStyle={styles.listContentContainer}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No results logged yet.</Text>
-          </View>
-        }
+      <StarDiary
+      problemName='고지혈증'
+      situation='고지혈증이 심해져서 병원에 가야 할 것 같아요.'
+      task='병원에 가서 진료를 받는다.'
+      action='병원에 가서 진료를 받았어요.'
+      result='고지혈증이 심하지 않다고 하셨어요. 약을 먹으면 괜찮아질 것 같아요.'
+
       />
-      <TouchableOpacity
-        style={styles.logResultButton}
-        onPress={handleLogResult}
-      >
-        <Ionicons
-          name="add-circle-outline"
-          size={22}
-          color={theme.onPrimaryContainer}
-          style={styles.buttonIcon}
-        />
-        <Text style={styles.logResultButtonText}>Log New Result</Text>
-      </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
